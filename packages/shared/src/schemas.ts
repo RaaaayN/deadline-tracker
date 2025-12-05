@@ -1,4 +1,5 @@
 import { z } from 'zod';
+
 import { DeadlineType, ReminderChannel, TaskStatus, UserRole } from './types';
 
 export const userSchema = z.object({
@@ -34,6 +35,9 @@ export const reminderSchema = z.object({
   channel: z.nativeEnum(ReminderChannel),
   sendAt: z.string().datetime(),
   userId: z.string(),
+  status: z.enum(['pending', 'sent', 'error']),
+  sentAt: z.string().datetime().optional(),
+  lastError: z.string().optional(),
 });
 
 export const candidatureSchema = z.object({

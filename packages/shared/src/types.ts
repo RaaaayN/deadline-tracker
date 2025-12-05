@@ -18,6 +18,12 @@ export enum ReminderChannel {
   Push = 'push',
 }
 
+export enum ReminderStatus {
+  Pending = 'pending',
+  Sent = 'sent',
+  Error = 'error',
+}
+
 export enum DeadlineType {
   Registration = 'registration',
   Test = 'test',
@@ -43,6 +49,12 @@ export interface Task {
   deadlineId?: string;
   candidatureId: string;
   tips?: string;
+  suggestion?: string;
+}
+
+export interface TaskSuggestion {
+  taskId: string;
+  suggestion: string;
 }
 
 export interface Reminder {
@@ -51,6 +63,9 @@ export interface Reminder {
   channel: ReminderChannel;
   sendAt: string;
   userId: string;
+  status: ReminderStatus;
+  sentAt?: string;
+  lastError?: string;
 }
 
 export interface Contest {

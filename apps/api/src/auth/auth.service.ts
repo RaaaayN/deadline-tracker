@@ -1,7 +1,9 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { hash, compare } from 'bcryptjs';
+import { compare, hash } from 'bcryptjs';
+
 import { PrismaService } from '../prisma.service';
+
 import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';

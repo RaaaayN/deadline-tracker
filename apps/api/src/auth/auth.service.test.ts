@@ -1,6 +1,9 @@
 import { JwtService } from '@nestjs/jwt';
-import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { hash } from 'bcryptjs';
+import { describe, expect, it, beforeEach, vi } from 'vitest';
+
+import { PrismaService } from '../prisma.service';
+
 import { AuthService } from './auth.service';
 
 class MockPrisma {
@@ -18,7 +21,7 @@ describe('AuthService', () => {
   beforeEach(() => {
     prisma = new MockPrisma();
     const jwt = new JwtService({ secret: 'test' });
-    service = new AuthService(prisma as unknown as any, jwt);
+    service = new AuthService(prisma as unknown as PrismaService, jwt);
   });
 
   it('signs up a user when email is free', async () => {

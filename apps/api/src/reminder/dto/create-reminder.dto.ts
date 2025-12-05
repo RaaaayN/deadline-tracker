@@ -1,5 +1,5 @@
-import { IsDateString, IsEnum, IsString } from 'class-validator';
 import { ReminderChannel } from '@dossiertracker/shared';
+import { IsDateString, IsEnum, IsString } from 'class-validator';
 
 export class CreateReminderDto {
   @IsString()

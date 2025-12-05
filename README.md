@@ -8,6 +8,10 @@ Plateforme pour centraliser les échéances AST, gérer checklists et rappels mu
 - `apps/mobile` : App Expo React Native pour rappels rapides et lecture du dashboard.
 - `packages/shared` : Types et schémas zod partagés.
 
+## Fonctionnalités clés
+- Checklist auto (concours/école) avec statuts Kanban (todo/doing/done) éditables dans le front.
+- Suggestions d’aide statiques par type d’échéance/tâche envoyées avec la checklist.
+
 ## Prérequis
 - Node.js 18+
 - pnpm (`npm i -g pnpm`)
@@ -30,6 +34,8 @@ Plateforme pour centraliser les échéances AST, gérer checklists et rappels mu
 - JWT avec `@nestjs/jwt`, rôles via `role` sur l’utilisateur.
 - Validation stricte (class-validator + zod côté shared).
 - Rappels SMS/push prévus via worker (BullMQ) à implémenter avec les clés fournisseurs.
+- SMTP requis pour l’envoi d’emails : configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` dans `.env`.
+- Rappels email J-30/J-7/J-1 générés automatiquement puis déclenchés par le scheduler `@nestjs/schedule` (toutes les minutes).
 
 ## Points à développer ensuite
 - Upload sécurisé des documents.

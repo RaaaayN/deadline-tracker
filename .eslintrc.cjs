@@ -20,7 +20,15 @@ module.exports = {
   settings: {
     react: { version: 'detect' },
     'import/resolver': {
-      typescript: {},
+      typescript: {
+        project: [
+          './tsconfig.base.json',
+          './apps/api/tsconfig.json',
+          './apps/web/tsconfig.json',
+          './apps/mobile/tsconfig.json',
+          './packages/shared/tsconfig.json',
+        ],
+      },
     },
   },
   rules: {

@@ -82,7 +82,7 @@ export function fetchCandidatures(token: string) {
       id: string;
       contest: { name: string; year: number };
       school?: { name: string };
-      tasks: { id: string; title: string; status: string }[];
+      tasks: { id: string; title: string; status: string; suggestion?: string }[];
     }[]
   >('/candidatures', { token });
 }
@@ -90,6 +90,14 @@ export function fetchCandidatures(token: string) {
 export function syncCandidatureDeadlines(token: string, candidatureId: string) {
   return apiFetch<{ created: number }>(`/candidatures/${candidatureId}/sync-deadlines`, {
     method: 'POST',
+    token,
+  });
+}
+
+export function updateTaskStatus(token: string, taskId: string, status: 'todo' | 'doing' | 'done') {
+  return apiFetch(`/candidatures/tasks/${taskId}/status`, {
+    method: 'PATCH',
+    body: { status },
     token,
   });
 }

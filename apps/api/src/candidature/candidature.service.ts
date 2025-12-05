@@ -1,20 +1,41 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { TaskStatus as SharedTaskStatus } from '@dossiertracker/shared';
-import { TaskStatus as PrismaTaskStatus } from '@prisma/client';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ReminderChannel as PrismaReminderChannel,
+  ReminderStatus as PrismaReminderStatus,
+  TaskStatus as PrismaTaskStatus,
+} from '@prisma/client';
+
 import { PrismaService } from '../prisma.service';
+
 import { CreateCandidatureDto } from './dto/create-candidature.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { getSuggestionForTask } from './suggestions';
 
 @Injectable()
 export class CandidatureService {
   constructor(private readonly prisma: PrismaService) {}
 
-  listForUser(userId: string) {
-    return this.prisma.candidature.findMany({
+  async listForUser(userId: string) {
+    const candidatures = await this.prisma.candidature.findMany({
       where: { userId },
-      include: { tasks: true, school: true, contest: true },
+      include: {
+        tasks: {
+          include: { deadline: true },
+        },
+        school: true,
+        contest: true,
+      },
       orderBy: { createdAt: 'desc' },
     });
+
+    return candidatures.map((candidature) => ({
+      ...candidature,
+      tasks: candidature.tasks.map((task) => ({
+        ...task,
+        suggestion: getSuggestionForTask(task.title, task.deadline),
+      })),
+    }));
   }
 
   async create(userId: string, dto: CreateCandidatureDto) {
@@ -67,6 +88,20 @@ export class CandidatureService {
     });
   }
 
+  async listSuggestions(userId: string, candidatureId: string) {
+    await this.assertOwnership(userId, candidatureId);
+    const tasks = await this.prisma.task.findMany({
+      where: { candidatureId },
+      include: { deadline: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return tasks.map((task) => ({
+      taskId: task.id,
+      suggestion: getSuggestionForTask(task.title, task.deadline),
+    }));
+  }
+
   /**
    * Synchronise les échéances officielles (concours + éventuelle école) en tâches TODO pour la candidature.
    * Évite les doublons lorsqu’une tâche est déjà liée à une deadline.
@@ -97,20 +132,19 @@ export class CandidatureService {
     const existingIds = new Set(existing.map((t) => t.deadlineId).filter(Boolean));
     const toCreate = deadlines.filter((d) => !existingIds.has(d.id));
 
-    if (toCreate.length === 0) {
-      return { created: 0 };
+    if (toCreate.length > 0) {
+      await this.prisma.task.createMany({
+        data: toCreate.map((dl) => ({
+          title: dl.title,
+          status: PrismaTaskStatus.todo,
+          candidatureId,
+          deadlineId: dl.id,
+        })),
+        skipDuplicates: true,
+      });
     }
 
-    await this.prisma.task.createMany({
-      data: toCreate.map((dl) => ({
-        title: dl.title,
-        status: PrismaTaskStatus.todo,
-        candidatureId,
-        deadlineId: dl.id,
-      })),
-      skipDuplicates: true,
-    });
-
+    await this.createReminders(userId, deadlines);
     return { created: toCreate.length };
   }
 
@@ -119,6 +153,35 @@ export class CandidatureService {
     if (!cand || cand.userId !== userId) {
       throw new ForbiddenException();
     }
+  }
+
+  private async createReminders(userId: string, deadlines: { id: string; dueAt: Date }[]) {
+    const now = new Date();
+    const reminders = deadlines.flatMap((deadline) => {
+      const anchorDays = [30, 7, 1];
+      return anchorDays
+        .map((days) => {
+          const sendAt = new Date(deadline.dueAt.getTime() - days * 24 * 60 * 60 * 1000);
+          return { sendAt };
+        })
+        .filter(({ sendAt }) => sendAt > now)
+        .map(({ sendAt }) => ({
+          userId,
+          deadlineId: deadline.id,
+          channel: PrismaReminderChannel.email,
+          sendAt,
+          status: PrismaReminderStatus.pending,
+        }));
+    });
+
+    if (reminders.length === 0) {
+      return;
+    }
+
+    await this.prisma.reminder.createMany({
+      data: reminders,
+      skipDuplicates: true,
+    });
   }
 }
 

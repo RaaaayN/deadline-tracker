@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from 'react';
+
 import {
   createCandidature,
   fetchCandidatures,
@@ -12,14 +13,17 @@ import {
   signup,
   syncCandidatureDeadlines,
   updateProfile,
+  updateTaskStatus,
 } from '../lib/api';
 
 type Contest = { id: string; name: string; year: number };
 type School = { id: string; name: string; contestId: string };
 type Deadline = { id: string; title: string; type: string; dueAt: string; schoolId?: string };
 type User = { id: string; email: string; firstName: string; lastName: string; role: string };
+type Task = { id: string; title: string; status: 'todo' | 'doing' | 'done'; suggestion?: string };
 
 const TOKEN_KEY = 'dossiertracker_token';
+const TASK_STATUSES: Array<Task['status']> = ['todo', 'doing', 'done'];
 
 export default function HomePage() {
   const [contests, setContests] = useState<Contest[]>([]);
@@ -30,7 +34,7 @@ export default function HomePage() {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [candidatures, setCandidatures] = useState<
-    { id: string; contest: { name: string; year: number }; school?: { name: string }; tasks: { id: string; title: string; status: string }[] }[]
+    { id: string; contest: { name: string; year: number }; school?: { name: string }; tasks: Task[] }[]
   >([]);
   const [status, setStatus] = useState<string | null>(null);
 
@@ -164,6 +168,18 @@ export default function HomePage() {
     }
   };
 
+  const handleTaskStatusChange = async (taskId: string, status: Task['status']) => {
+    if (!token) return;
+    try {
+      await updateTaskStatus(token, taskId, status);
+      const list = await fetchCandidatures(token);
+      setCandidatures(list);
+      setStatus('Statut mis à jour.');
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : 'Erreur statut tâche');
+    }
+  };
+
   return (
     <main style={{ padding: '32px', maxWidth: '1080px', margin: '0 auto', display: 'grid', gap: 24 }}>
       <header>
@@ -220,10 +236,18 @@ export default function HomePage() {
             </button>
           </div>
           <div style={{ display: 'grid', gap: 8, maxWidth: 400 }}>
-            <label>Prénom</label>
-            <input value={profileFirst} onChange={(e) => setProfileFirst(e.target.value)} />
-            <label>Nom</label>
-            <input value={profileLast} onChange={(e) => setProfileLast(e.target.value)} />
+            <label htmlFor="profile-first">Prénom</label>
+            <input
+              id="profile-first"
+              value={profileFirst}
+              onChange={(e) => setProfileFirst(e.target.value)}
+            />
+            <label htmlFor="profile-last">Nom</label>
+            <input
+              id="profile-last"
+              value={profileLast}
+              onChange={(e) => setProfileLast(e.target.value)}
+            />
             <button onClick={handleUpdateProfile} style={{ padding: 10, background: '#0f172a', color: 'white' }}>
               Mettre à jour le profil
             </button>
@@ -234,8 +258,11 @@ export default function HomePage() {
       <section style={{ border: '1px solid #e2e8f0', padding: 16, borderRadius: 8, display: 'grid', gap: 16 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <div>
-            <label style={{ display: 'block', marginBottom: 4 }}>Concours</label>
+            <label style={{ display: 'block', marginBottom: 4 }} htmlFor="contest-select">
+              Concours
+            </label>
             <select
+              id="contest-select"
               value={contestId}
               onChange={(e) => setContestId(e.target.value)}
               style={{ width: '100%', padding: 8 }}
@@ -249,8 +276,11 @@ export default function HomePage() {
             </select>
           </div>
           <div>
-            <label style={{ display: 'block', marginBottom: 4 }}>École (optionnel)</label>
+            <label style={{ display: 'block', marginBottom: 4 }} htmlFor="school-select">
+              École (optionnel)
+            </label>
             <select
+              id="school-select"
               value={schoolId}
               onChange={(e) => setSchoolId(e.target.value)}
               style={{ width: '100%', padding: 8 }}
@@ -328,9 +358,35 @@ export default function HomePage() {
                 </div>
                 <div style={{ marginTop: 8, display: 'grid', gap: 6 }}>
                   {cand.tasks.map((t) => (
-                    <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>{t.title}</span>
-                      <span style={{ fontSize: 12, color: '#475569' }}>{t.status}</span>
+                    <div
+                      key={t.id}
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 180px',
+                        alignItems: 'center',
+                        gap: 8,
+                        border: '1px solid #e2e8f0',
+                        padding: 8,
+                        borderRadius: 6,
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 600 }}>{t.title}</div>
+                        {t.suggestion && (
+                          <div style={{ fontSize: 12, color: '#475569', marginTop: 4 }}>{t.suggestion}</div>
+                        )}
+                      </div>
+                      <select
+                        value={t.status}
+                        onChange={(e) => handleTaskStatusChange(t.id, e.target.value as Task['status'])}
+                        style={{ padding: 8, borderRadius: 6 }}
+                      >
+                        {TASK_STATUSES.map((statusOption) => (
+                          <option key={statusOption} value={statusOption}>
+                            {statusOption}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   ))}
                   {cand.tasks.length === 0 && <span style={{ color: '#475569' }}>Aucune tâche encore.</span>}

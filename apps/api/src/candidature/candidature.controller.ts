@@ -1,3 +1,4 @@
+import { TaskStatus } from '@dossiertracker/shared';
 import {
   Body,
   Controller,
@@ -9,8 +10,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { TaskStatus } from '@dossiertracker/shared';
 import { Request } from 'express';
+
 import { CandidatureService } from './candidature.service';
 import { CreateCandidatureDto } from './dto/create-candidature.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
@@ -51,6 +52,11 @@ export class CandidatureController {
   @Post(':id/sync-deadlines')
   syncDeadlines(@Req() req: AuthedRequest, @Param('id') candidatureId: string) {
     return this.candidatureService.syncDeadlines(req.user.userId, candidatureId);
+  }
+
+  @Get(':id/suggestions')
+  suggestions(@Req() req: AuthedRequest, @Param('id') candidatureId: string) {
+    return this.candidatureService.listSuggestions(req.user.userId, candidatureId);
   }
 }
 

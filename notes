@@ -1,0 +1,15 @@
+cp .env apps/api/.env
+pnpm --filter @dossiertracker/api dev
+
+
+
+
+
+
+
+pnpm prisma migrate dev --schema apps/api/prisma/schema.prisma
+pnpm prisma db seed --schema apps/api/prisma/schema.prisma
+
+pnpm --filter @dossiertracker/api dev
+
+pnpm --filter @dossiertracker/web dev

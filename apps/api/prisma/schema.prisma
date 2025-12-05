@@ -27,6 +27,12 @@ enum ReminderChannel {
   push
 }
 
+enum ReminderStatus {
+  pending
+  sent
+  error
+}
+
 enum DeadlineType {
   registration
   test
@@ -129,9 +135,14 @@ model Reminder {
   deadlineId String
   channel    ReminderChannel
   sendAt     DateTime
+  status     ReminderStatus  @default(pending)
+  sentAt     DateTime?
+  lastError  String?
   user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId     String
   createdAt  DateTime        @default(now())
+
+  @@unique([userId, deadlineId, channel, sendAt])
 }
 
 model Document {

@@ -1,8 +1,9 @@
 import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Request } from 'express';
-import { ReminderService } from './reminder.service';
+
 import { CreateReminderDto } from './dto/create-reminder.dto';
+import { ReminderService } from './reminder.service';
 
 interface AuthedRequest extends Request {
   user: { userId: string };
