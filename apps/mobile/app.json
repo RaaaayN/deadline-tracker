@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "DossierTracker",
+    "slug": "dossiertracker",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "sdkVersion": "50.0.0",
+    "platforms": ["ios", "android", "web"],
+    "extra": {
+      "apiUrl": "http://localhost:4000"
+    }
+  }
+}
+

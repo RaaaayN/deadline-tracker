@@ -1,0 +1,145 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  student
+  parent
+  mentor
+  campus_admin
+  super_admin
+}
+
+enum TaskStatus {
+  todo
+  doing
+  done
+}
+
+enum ReminderChannel {
+  email
+  sms
+  push
+}
+
+enum DeadlineType {
+  registration
+  test
+  oral
+  result
+  other
+}
+
+enum DocumentStatus {
+  missing
+  pending
+  validated
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  role         Role          @default(student)
+  candidatures Candidature[]
+  reminders    Reminder[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Contest {
+  id           String        @id @default(cuid())
+  name         String
+  year         Int
+  url          String?
+  deadlines    Deadline[]
+  schools      School[]
+  candidatures Candidature[]
+  createdAt    DateTime      @default(now())
+
+  @@unique([name, year], map: "name_year")
+}
+
+model School {
+  id           String        @id @default(cuid())
+  name         String
+  contest      Contest       @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  contestId    String
+  deadlines    Deadline[]
+  candidatures Candidature[]
+  createdAt    DateTime      @default(now())
+
+  @@unique([name, contestId], map: "name_contestId")
+}
+
+model Deadline {
+  id          String       @id @default(cuid())
+  title       String
+  type        DeadlineType
+  dueAt       DateTime
+  contest     Contest      @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  contestId   String
+  school      School?      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolId    String?
+  createdByAdmin Boolean   @default(true)
+  reminders   Reminder[]
+  tasks       Task[]
+  createdAt   DateTime     @default(now())
+
+  @@unique([contestId, schoolId, title], map: "contestId_schoolId_title")
+}
+
+model Candidature {
+  id         String    @id @default(cuid())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  contest    Contest   @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  contestId  String
+  school     School?   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolId   String?
+  status     String    @default("draft")
+  tasks      Task[]
+  documents  Document[]
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model Task {
+  id            String      @id @default(cuid())
+  title         String
+  status        TaskStatus
+  candidature   Candidature @relation(fields: [candidatureId], references: [id], onDelete: Cascade)
+  candidatureId String
+  deadline      Deadline?   @relation(fields: [deadlineId], references: [id], onDelete: Cascade)
+  deadlineId    String?
+  tips          String?
+  createdAt     DateTime    @default(now())
+}
+
+model Reminder {
+  id         String          @id @default(cuid())
+  deadline   Deadline        @relation(fields: [deadlineId], references: [id], onDelete: Cascade)
+  deadlineId String
+  channel    ReminderChannel
+  sendAt     DateTime
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  createdAt  DateTime        @default(now())
+}
+
+model Document {
+  id            String       @id @default(cuid())
+  name          String
+  status        DocumentStatus @default(missing)
+  candidature   Candidature  @relation(fields: [candidatureId], references: [id], onDelete: Cascade)
+  candidatureId String
+  createdAt     DateTime     @default(now())
+}
+

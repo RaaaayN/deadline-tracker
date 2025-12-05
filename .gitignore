@@ -1,0 +1,38 @@
+node_modules
+.pnpm-store
+.turbo
+.next
+dist
+build
+coverage
+.expo
+.expo-shared
+.vercel
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Env files
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.sample
+!.env.example
+!.env.*.example
+
+# Editors / OS
+.DS_Store
+Thumbs.db
+.idea
+.vscode
+
+# Package managers
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
