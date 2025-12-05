@@ -18,7 +18,7 @@ export class CandidatureService {
   }
 
   async create(userId: string, dto: CreateCandidatureDto) {
-    return this.prisma.candidature.create({
+    const created = await this.prisma.candidature.create({
       data: {
         userId,
         contestId: dto.contestId,
@@ -33,6 +33,12 @@ export class CandidatureService {
         },
       },
       include: { tasks: true },
+    });
+
+    await this.syncDeadlines(userId, created.id);
+    return this.prisma.candidature.findUnique({
+      where: { id: created.id },
+      include: { tasks: true, school: true, contest: true },
     });
   }
 
@@ -59,6 +65,53 @@ export class CandidatureService {
       where: { id: taskId },
       data: { status: status as PrismaTaskStatus },
     });
+  }
+
+  /**
+   * Synchronise les échéances officielles (concours + éventuelle école) en tâches TODO pour la candidature.
+   * Évite les doublons lorsqu’une tâche est déjà liée à une deadline.
+   */
+  async syncDeadlines(userId: string, candidatureId: string) {
+    const candidature = await this.prisma.candidature.findUnique({
+      where: { id: candidatureId },
+      include: { contest: true, school: true },
+    });
+    if (!candidature || candidature.userId !== userId) {
+      throw new ForbiddenException();
+    }
+
+    const deadlines = await this.prisma.deadline.findMany({
+      where: {
+        contestId: candidature.contestId,
+        OR: [
+          { schoolId: null },
+          ...(candidature.schoolId ? [{ schoolId: candidature.schoolId }] : []),
+        ],
+      },
+    });
+
+    const existing = await this.prisma.task.findMany({
+      where: { candidatureId, deadlineId: { not: null } },
+      select: { deadlineId: true },
+    });
+    const existingIds = new Set(existing.map((t) => t.deadlineId).filter(Boolean));
+    const toCreate = deadlines.filter((d) => !existingIds.has(d.id));
+
+    if (toCreate.length === 0) {
+      return { created: 0 };
+    }
+
+    await this.prisma.task.createMany({
+      data: toCreate.map((dl) => ({
+        title: dl.title,
+        status: PrismaTaskStatus.todo,
+        candidatureId,
+        deadlineId: dl.id,
+      })),
+      skipDuplicates: true,
+    });
+
+    return { created: toCreate.length };
   }
 
   private async assertOwnership(userId: string, candidatureId: string) {

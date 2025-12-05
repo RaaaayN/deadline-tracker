@@ -4,6 +4,7 @@ import { hash, compare } from 'bcryptjs';
 import { PrismaService } from '../prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
 export class AuthService {
@@ -37,6 +38,26 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
     return this.signUser(user.id, user.role);
+  }
+
+  async me(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, firstName: true, lastName: true, role: true, createdAt: true },
+    });
+    return user;
+  }
+
+  async updateProfile(userId: string, payload: UpdateProfileDto) {
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        firstName: payload.firstName,
+        lastName: payload.lastName,
+      },
+      select: { id: true, email: true, firstName: true, lastName: true, role: true, createdAt: true },
+    });
+    return updated;
   }
 
   private signUser(userId: string, role: string) {

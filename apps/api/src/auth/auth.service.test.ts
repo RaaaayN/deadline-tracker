@@ -7,6 +7,7 @@ class MockPrisma {
   user = {
     findUnique: vi.fn(),
     create: vi.fn(),
+    update: vi.fn(),
   };
 }
 
@@ -55,6 +56,32 @@ describe('AuthService', () => {
 
     const res = await service.login({ email: 'user@example.com', password: 'secret' });
     expect(res.accessToken).toBeDefined();
+  });
+
+  it('returns profile from me()', async () => {
+    prisma.user.findUnique.mockResolvedValue({
+      id: 'u2',
+      email: 'user@example.com',
+      role: 'student',
+      firstName: 'A',
+      lastName: 'B',
+      createdAt: new Date(),
+    });
+    const res = await service.me('u2');
+    expect(res?.email).toBe('user@example.com');
+  });
+
+  it('updates profile names', async () => {
+    prisma.user.update.mockResolvedValue({
+      id: 'u2',
+      email: 'user@example.com',
+      role: 'student',
+      firstName: 'John',
+      lastName: 'Doe',
+      createdAt: new Date(),
+    });
+    const res = await service.updateProfile('u2', { firstName: 'John', lastName: 'Doe' });
+    expect(res.firstName).toBe('John');
   });
 });
 

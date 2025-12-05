@@ -47,5 +47,10 @@ export class CandidatureController {
   ) {
     return this.candidatureService.updateTaskStatus(req.user.userId, taskId, status);
   }
+
+  @Post(':id/sync-deadlines')
+  syncDeadlines(@Req() req: AuthedRequest, @Param('id') candidatureId: string) {
+    return this.candidatureService.syncDeadlines(req.user.userId, candidatureId);
+  }
 }
 

@@ -23,6 +23,8 @@ async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T>
   return res.json() as Promise<T>;
 }
 
+type AuthPayload = { email: string; password: string; firstName?: string; lastName?: string };
+
 export function fetchContests() {
   return apiFetch<{ id: string; name: string; year: number }[]>('/catalog/contests');
 }
@@ -44,5 +46,51 @@ export function fetchDeadlines(contestId?: string, schoolId?: string) {
 
 export function createCandidature(token: string, payload: { contestId: string; schoolId?: string }) {
   return apiFetch('/candidatures', { method: 'POST', body: payload, token });
+}
+
+export function login(payload: AuthPayload) {
+  return apiFetch<{ accessToken: string; userId: string; role: string }>('/auth/login', {
+    method: 'POST',
+    body: payload,
+  });
+}
+
+export function signup(payload: AuthPayload & { firstName: string; lastName: string }) {
+  return apiFetch<{ accessToken: string; userId: string; role: string }>('/auth/signup', {
+    method: 'POST',
+    body: payload,
+  });
+}
+
+export function fetchMe(token: string) {
+  return apiFetch<{ id: string; email: string; firstName: string; lastName: string; role: string; createdAt: string }>(
+    '/auth/me',
+    { token },
+  );
+}
+
+export function updateProfile(token: string, payload: { firstName?: string; lastName?: string }) {
+  return apiFetch<{ id: string; email: string; firstName: string; lastName: string; role: string; createdAt: string }>(
+    '/auth/me',
+    { method: 'PATCH', body: payload, token },
+  );
+}
+
+export function fetchCandidatures(token: string) {
+  return apiFetch<
+    {
+      id: string;
+      contest: { name: string; year: number };
+      school?: { name: string };
+      tasks: { id: string; title: string; status: string }[];
+    }[]
+  >('/candidatures', { token });
+}
+
+export function syncCandidatureDeadlines(token: string, candidatureId: string) {
+  return apiFetch<{ created: number }>(`/candidatures/${candidatureId}/sync-deadlines`, {
+    method: 'POST',
+    token,
+  });
 }
 
