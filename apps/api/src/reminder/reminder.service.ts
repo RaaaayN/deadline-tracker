@@ -5,7 +5,7 @@ import {
   ReminderStatus as PrismaReminderStatus,
 } from '@prisma/client';
 
-import { NotificationService } from '../notification/notification.service';
+import { GoogleService } from '../google/google.service';
 import { PrismaService } from '../prisma.service';
 
 import { CreateReminderDto } from './dto/create-reminder.dto';
@@ -16,7 +16,7 @@ export class ReminderService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly notification: NotificationService,
+    private readonly google: GoogleService,
   ) {}
 
   listForUser(userId: string) {
@@ -54,7 +54,13 @@ export class ReminderService {
 
     for (const reminder of pending) {
       if (reminder.channel === PrismaReminderChannel.email) {
-        await this.sendEmail(reminder.id, reminder.user.email, reminder.deadline.title, reminder.deadline.dueAt);
+        await this.sendEmail(
+          reminder.id,
+          reminder.userId,
+          reminder.user.email,
+          reminder.deadline.title,
+          reminder.deadline.dueAt,
+        );
         continue;
       }
 
@@ -62,7 +68,13 @@ export class ReminderService {
     }
   }
 
-  private async sendEmail(reminderId: string, to: string, deadlineTitle: string, deadlineAt: Date): Promise<void> {
+  private async sendEmail(
+    reminderId: string,
+    userId: string,
+    to: string,
+    deadlineTitle: string,
+    deadlineAt: Date,
+  ): Promise<void> {
     const subject = `Rappel : ${deadlineTitle}`;
     const text = [
       `Bonjour,`,
@@ -74,7 +86,7 @@ export class ReminderService {
     ].join('\n');
 
     try {
-      await this.notification.sendEmailReminder(to, subject, text);
+      await this.google.sendEmail(userId, to, subject, text);
       await this.prisma.reminder.update({
         where: { id: reminderId },
         data: { status: PrismaReminderStatus.sent, sentAt: new Date(), lastError: null },

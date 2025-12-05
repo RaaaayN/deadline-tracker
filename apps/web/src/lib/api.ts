@@ -102,3 +102,26 @@ export function updateTaskStatus(token: string, taskId: string, status: 'todo' |
   });
 }
 
+export function getGoogleAuthUrl(token: string) {
+  return apiFetch<{ url: string }>('/google/oauth/url', { token });
+}
+
+export function exchangeGoogleCode(token: string, code: string) {
+  return apiFetch<{ connected: true }>('/google/oauth/exchange', { method: 'POST', body: { code }, token });
+}
+
+export function fetchGoogleStatus(token: string) {
+  return apiFetch<{ connected: boolean; scopes?: string[]; expiryDate?: string }>('/google/status', { token });
+}
+
+export function listInbox(token: string) {
+  return apiFetch<{ id: string; snippet: string; subject?: string; from?: string; date?: string }[]>(
+    '/google/gmail/messages',
+    { token },
+  );
+}
+
+export function createDraft(token: string, payload: { to: string; subject: string; text: string }) {
+  return apiFetch<{ draftId: string }>('/google/gmail/drafts', { method: 'POST', body: payload, token });
+}
+

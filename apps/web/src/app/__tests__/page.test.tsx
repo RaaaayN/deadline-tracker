@@ -17,6 +17,10 @@ const mockApi = vi.hoisted(() => ({
   syncCandidatureDeadlines: vi.fn(),
   updateProfile: vi.fn(),
   updateTaskStatus: vi.fn(),
+  fetchGoogleStatus: vi.fn(),
+  getGoogleAuthUrl: vi.fn(),
+  listInbox: vi.fn(),
+  createDraft: vi.fn(),
 }));
 
 vi.mock('../../lib/api', () => mockApi);
@@ -44,6 +48,10 @@ beforeEach(() => {
   mockApi.syncCandidatureDeadlines.mockResolvedValue({ created: 0 });
   mockApi.updateProfile.mockResolvedValue(baseUser);
   mockApi.updateTaskStatus.mockResolvedValue({});
+  mockApi.fetchGoogleStatus.mockResolvedValue({ connected: false });
+  mockApi.getGoogleAuthUrl.mockResolvedValue({ url: 'http://google.test' });
+  mockApi.listInbox.mockResolvedValue([]);
+  mockApi.createDraft.mockResolvedValue({ draftId: 'd1' });
 });
 
 afterEach(() => {

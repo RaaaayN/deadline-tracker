@@ -77,6 +77,21 @@ async function main() {
         },
       ],
     },
+    {
+      name: 'Officiel Décembre',
+      year: 2025,
+      url: 'https://www.dossiertracker.test/decembre',
+      schools: [
+        {
+          name: 'Suivi DossierTracker',
+          deadlines: [
+            { title: 'Dossier complet (Décembre)', type: DeadlineType.registration, dueAt: '2025-12-08T09:00:00Z' },
+            { title: 'Résultats pré-admissibilité', type: DeadlineType.result, dueAt: '2025-12-10T12:00:00Z' },
+            { title: 'Oraux de confirmation', type: DeadlineType.oral, dueAt: '2025-12-12T08:30:00Z' },
+          ],
+        },
+      ],
+    },
   ];
 
   for (const contest of contests) {
@@ -195,6 +210,44 @@ async function main() {
           deadlineId: hecDeadline.id,
           channel: ReminderChannel.email,
           sendAt: new Date(new Date(hecDeadline.dueAt).getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(), // J-7
+        },
+      });
+    }
+  }
+
+  const decemberContest = await prisma.contest.findFirst({ where: { name: 'Officiel Décembre', year: 2025 } });
+  const decemberSchool = decemberContest
+    ? await prisma.school.findFirst({ where: { contestId: decemberContest.id, name: 'Suivi DossierTracker' } })
+    : null;
+  const decemberDeadlines =
+    decemberContest && decemberSchool
+      ? await prisma.deadline.findMany({ where: { contestId: decemberContest.id, schoolId: decemberSchool.id } })
+      : [];
+
+  if (decemberContest && decemberSchool) {
+    const decCandidature =
+      (await prisma.candidature.findFirst({
+        where: { userId: demoUser.id, contestId: decemberContest.id, schoolId: decemberSchool.id },
+      })) ||
+      (await prisma.candidature.create({
+        data: {
+          userId: demoUser.id,
+          contestId: decemberContest.id,
+          schoolId: decemberSchool.id,
+          status: 'draft',
+        },
+      }));
+
+    for (const dl of decemberDeadlines) {
+      await prisma.task.upsert({
+        where: { id: `${decCandidature.id}-${dl.id}` },
+        update: {},
+        create: {
+          id: `${decCandidature.id}-${dl.id}`,
+          title: dl.title,
+          status: TaskStatus.todo,
+          candidatureId: decCandidature.id,
+          deadlineId: dl.id,
         },
       });
     }

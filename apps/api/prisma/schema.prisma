@@ -56,6 +56,7 @@ model User {
   role         Role          @default(student)
   candidatures Candidature[]
   reminders    Reminder[]
+  googleCredential GoogleCredential?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 }
@@ -143,6 +144,20 @@ model Reminder {
   createdAt  DateTime        @default(now())
 
   @@unique([userId, deadlineId, channel, sendAt])
+}
+
+model GoogleCredential {
+  id           String   @id @default(cuid())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String   @unique
+  calendarId   String?
+  accessToken  String
+  refreshToken String
+  scope        String
+  tokenType    String
+  expiryDate   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model Document {

@@ -4,11 +4,15 @@ import React, { useEffect, useMemo, useState } from 'react';
 
 import {
   createCandidature,
+  createDraft,
   fetchCandidatures,
   fetchContests,
   fetchDeadlines,
   fetchMe,
   fetchSchools,
+  fetchGoogleStatus,
+  getGoogleAuthUrl,
+  listInbox,
   login,
   signup,
   syncCandidatureDeadlines,
@@ -65,6 +69,16 @@ export default function HomePage() {
   const [isCreating, setIsCreating] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
+  const [googleStatus, setGoogleStatus] = useState<{ connected: boolean; scopes?: string[]; expiryDate?: string } | null>(
+    null,
+  );
+  const [inboxMessages, setInboxMessages] = useState<
+    { id: string; snippet: string; subject?: string; from?: string; date?: string }[]
+  >([]);
+  const [isInboxLoading, setIsInboxLoading] = useState(false);
+  const [draftTo, setDraftTo] = useState('');
+  const [draftSubject, setDraftSubject] = useState('');
+  const [draftBody, setDraftBody] = useState('');
 
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -107,6 +121,8 @@ export default function HomePage() {
     if (!token) {
       setUser(null);
       setCandidatures([]);
+      setGoogleStatus(null);
+      setInboxMessages([]);
       return;
     }
     fetchMe(token)
@@ -118,6 +134,13 @@ export default function HomePage() {
       .catch((err) => setBanner({ tone: 'error', message: err.message }));
     fetchCandidatures(token)
       .then(setCandidatures)
+      .catch((err) => setBanner({ tone: 'error', message: err.message }));
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+    fetchGoogleStatus(token)
+      .then(setGoogleStatus)
       .catch((err) => setBanner({ tone: 'error', message: err.message }));
   }, [token]);
 
@@ -170,8 +193,57 @@ export default function HomePage() {
     setToken(null);
     setUser(null);
     setCandidatures([]);
+    setGoogleStatus(null);
+    setInboxMessages([]);
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem(TOKEN_KEY);
+    }
+  };
+
+  const handleConnectGoogle = async () => {
+    if (!token) {
+      setBanner({ tone: 'error', message: 'Connecte-toi avant de lier Google.' });
+      return;
+    }
+    try {
+      const { url } = await getGoogleAuthUrl(token);
+      window.location.href = url;
+    } catch (err) {
+      setBanner({ tone: 'error', message: err instanceof Error ? err.message : 'Erreur Google OAuth' });
+    }
+  };
+
+  const loadInbox = async () => {
+    if (!token) return;
+    setIsInboxLoading(true);
+    try {
+      const messages = await listInbox(token);
+      setInboxMessages(messages);
+    } catch (err) {
+      setBanner({ tone: 'error', message: err instanceof Error ? err.message : 'Erreur Gmail' });
+    } finally {
+      setIsInboxLoading(false);
+    }
+  };
+
+  const handleCreateDraft = async () => {
+    if (!token) {
+      setBanner({ tone: 'error', message: 'Connecte-toi avant de créer un brouillon.' });
+      return;
+    }
+    if (!draftTo || !draftSubject || !draftBody) {
+      setBanner({ tone: 'error', message: 'Destinataire, objet et contenu sont requis.' });
+      return;
+    }
+    setBanner(null);
+    try {
+      await createDraft(token, { to: draftTo, subject: draftSubject, text: draftBody });
+      setBanner({ tone: 'success', message: 'Brouillon Gmail créé.' });
+      setDraftTo('');
+      setDraftSubject('');
+      setDraftBody('');
+    } catch (err) {
+      setBanner({ tone: 'error', message: err instanceof Error ? err.message : 'Erreur brouillon' });
     }
   };
 
@@ -392,6 +464,64 @@ export default function HomePage() {
             <button className="btn btn-primary" type="button" onClick={handleUpdateProfile} disabled={isProfileSaving}>
               {isProfileSaving ? 'Enregistrement...' : 'Mettre à jour le profil'}
             </button>
+          </div>
+        </section>
+      )}
+
+      {user && (
+        <section className="card stack">
+          <div className="card-header">
+            <div>
+              <h2 className="section-title">Google (Calendar + Gmail)</h2>
+              <p className="muted">
+                Connecte ton compte Google pour insérer les échéances dans Calendar et gérer les brouillons Gmail.
+              </p>
+            </div>
+            <div className="stack-sm" style={{ minWidth: 220 }}>
+              <span className="badge">{googleStatus?.connected ? 'Connecté' : 'Non connecté'}</span>
+              {googleStatus?.expiryDate && <span className="subtle">Token expire le {new Date(googleStatus.expiryDate).toLocaleString()}</span>}
+            </div>
+          </div>
+          <div className="controls stack-sm">
+            <button className="btn btn-primary" type="button" onClick={handleConnectGoogle}>
+              Lier mon compte Google
+            </button>
+            <div className="field">
+              <label>Inbox Gmail</label>
+              <div className="controls">
+                <button className="btn btn-secondary" type="button" onClick={loadInbox} disabled={isInboxLoading}>
+                  {isInboxLoading ? 'Chargement...' : 'Récupérer mes derniers mails'}
+                </button>
+                <div className="stack-sm">
+                  {inboxMessages.length === 0 && <span className="muted">Aucun mail chargé pour l’instant.</span>}
+                  {inboxMessages.map((msg) => (
+                    <div key={msg.id} className="card stack" style={{ boxShadow: 'none', borderColor: '#e2e8f0' }}>
+                      <div className="stack-sm">
+                        <strong>{msg.subject ?? '(sans objet)'}</strong>
+                        <span className="muted">{msg.from ?? 'Expéditeur inconnu'}</span>
+                        <span className="subtle">{msg.snippet}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="field">
+              <label>Créer un brouillon Gmail</label>
+              <div className="grid-2">
+                <input placeholder="Destinataire" value={draftTo} onChange={(e) => setDraftTo(e.target.value)} />
+                <input placeholder="Objet" value={draftSubject} onChange={(e) => setDraftSubject(e.target.value)} />
+              </div>
+              <textarea
+                placeholder="Contenu du mail"
+                value={draftBody}
+                onChange={(e) => setDraftBody(e.target.value)}
+                rows={4}
+              />
+              <button className="btn btn-secondary" type="button" onClick={handleCreateDraft}>
+                Enregistrer en brouillon
+              </button>
+            </div>
           </div>
         </section>
       )}

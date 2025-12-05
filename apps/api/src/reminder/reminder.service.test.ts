@@ -1,7 +1,7 @@
 import { ReminderChannel, ReminderStatus } from '@prisma/client';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-import { NotificationService } from '../notification/notification.service';
+import { GoogleService } from '../google/google.service';
 import { PrismaService } from '../prisma.service';
 
 import { ReminderService } from './reminder.service';
@@ -13,19 +13,19 @@ class MockPrisma {
   };
 }
 
-class MockNotification {
-  sendEmailReminder = vi.fn();
+class MockGoogle {
+  sendEmail = vi.fn();
 }
 
 describe('ReminderService dispatchDue', () => {
   let prisma: MockPrisma;
-  let notifier: MockNotification;
+  let google: MockGoogle;
   let service: ReminderService;
 
   beforeEach(() => {
     prisma = new MockPrisma();
-    notifier = new MockNotification();
-    service = new ReminderService(prisma as unknown as PrismaService, notifier as unknown as NotificationService);
+    google = new MockGoogle();
+    service = new ReminderService(prisma as unknown as PrismaService, google as unknown as GoogleService);
   });
 
   it('sends pending email reminders and marks them sent', async () => {
@@ -33,6 +33,7 @@ describe('ReminderService dispatchDue', () => {
     prisma.reminder.findMany.mockResolvedValue([
       {
         id: 'r1',
+        userId: 'u1',
         channel: ReminderChannel.email,
         status: ReminderStatus.pending,
         sendAt: new Date(),
@@ -40,11 +41,12 @@ describe('ReminderService dispatchDue', () => {
         deadline: { title: 'Test', dueAt },
       },
     ]);
-    notifier.sendEmailReminder.mockResolvedValue(undefined);
+    google.sendEmail.mockResolvedValue(undefined);
 
     await service.dispatchDue();
 
-    expect(notifier.sendEmailReminder).toHaveBeenCalledWith(
+    expect(google.sendEmail).toHaveBeenCalledWith(
+      'u1',
       'user@example.com',
       expect.stringContaining('Rappel'),
       expect.stringContaining('Test'),
@@ -59,6 +61,7 @@ describe('ReminderService dispatchDue', () => {
     prisma.reminder.findMany.mockResolvedValue([
       {
         id: 'r2',
+        userId: 'u1',
         channel: ReminderChannel.email,
         status: ReminderStatus.pending,
         sendAt: new Date(),
@@ -66,13 +69,13 @@ describe('ReminderService dispatchDue', () => {
         deadline: { title: 'Test', dueAt: new Date() },
       },
     ]);
-    notifier.sendEmailReminder.mockRejectedValue(new Error('SMTP down'));
+    google.sendEmail.mockRejectedValue(new Error('Gmail down'));
 
     await service.dispatchDue();
 
     expect(prisma.reminder.update).toHaveBeenCalledWith({
       where: { id: 'r2' },
-      data: expect.objectContaining({ status: ReminderStatus.error, lastError: 'SMTP down' }),
+      data: expect.objectContaining({ status: ReminderStatus.error, lastError: 'Gmail down' }),
     });
   });
 });

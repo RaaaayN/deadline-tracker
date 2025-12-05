@@ -1,11 +1,12 @@
 import { TaskStatus as SharedTaskStatus } from '@dossiertracker/shared';
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import {
   ReminderChannel as PrismaReminderChannel,
   ReminderStatus as PrismaReminderStatus,
   TaskStatus as PrismaTaskStatus,
 } from '@prisma/client';
 
+import { GoogleService } from '../google/google.service';
 import { PrismaService } from '../prisma.service';
 
 import { CreateCandidatureDto } from './dto/create-candidature.dto';
@@ -14,7 +15,12 @@ import { getSuggestionForTask } from './suggestions';
 
 @Injectable()
 export class CandidatureService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(CandidatureService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly google: GoogleService,
+  ) {}
 
   async listForUser(userId: string) {
     const candidatures = await this.prisma.candidature.findMany({
@@ -115,15 +121,14 @@ export class CandidatureService {
       throw new ForbiddenException();
     }
 
-    const deadlines = await this.prisma.deadline.findMany({
-      where: {
-        contestId: candidature.contestId,
-        OR: [
-          { schoolId: null },
-          ...(candidature.schoolId ? [{ schoolId: candidature.schoolId }] : []),
-        ],
-      },
-    });
+    const deadlines =
+      candidature.schoolId === null
+        ? await this.prisma.deadline.findMany({
+            where: { contestId: candidature.contestId },
+          })
+        : await this.prisma.deadline.findMany({
+            where: { contestId: candidature.contestId, OR: [{ schoolId: null }, { schoolId: candidature.schoolId }] },
+          });
 
     const existing = await this.prisma.task.findMany({
       where: { candidatureId, deadlineId: { not: null } },
@@ -145,6 +150,7 @@ export class CandidatureService {
     }
 
     await this.createReminders(userId, deadlines);
+    await this.syncDeadlinesToCalendar(userId, deadlines);
     return { created: toCreate.length };
   }
 
@@ -182,6 +188,18 @@ export class CandidatureService {
       data: reminders,
       skipDuplicates: true,
     });
+  }
+
+  private async syncDeadlinesToCalendar(userId: string, deadlines: { id: string; title: string; dueAt: Date }[]) {
+    if (deadlines.length === 0) {
+      return;
+    }
+    try {
+      await this.google.syncDeadlinesToCalendar(userId, deadlines);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Google Calendar sync failed';
+      this.logger.warn(`[Calendar] sync skipped for user ${userId}: ${message}`);
+    }
   }
 }
 

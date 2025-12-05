@@ -45,9 +45,9 @@ Un oubli peut coûter **une année d’études ou une place en école de rêve**
 * Suivi de tâches type “Kanban” (à faire / en cours / fait).
 * Suggestions IA pour chaque tâche (ex. modèles de CV, guide pour lettre de motivation, conseils d’oraux).
 
-### 4. 📆 **Synchronisation avec Google Calendar / iCal / Outlook**
+### 4. 📆 **Synchronisation avec Google Calendar**
 
-* Insertion automatique des dates importantes dans le calendrier personnel.
+* Insertion automatique des dates importantes dans Google Calendar (uniquement pour l’instant).
 * Affichage croisé avec événements d’examens, stages, etc.
 
 ### 5. 👪 **Comptes liés : Parents / Coachs / Conseillers**

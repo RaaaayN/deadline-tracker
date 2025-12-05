@@ -34,7 +34,7 @@ Plateforme pour centraliser les échéances AST, gérer checklists et rappels mu
 - JWT avec `@nestjs/jwt`, rôles via `role` sur l’utilisateur.
 - Validation stricte (class-validator + zod côté shared).
 - Rappels SMS/push prévus via worker (BullMQ) à implémenter avec les clés fournisseurs.
-- SMTP requis pour l’envoi d’emails : configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` dans `.env`.
+- Intégration Google pour emails (Gmail API) et Calendar : configure `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `GOOGLE_SCOPES` (incluant `https://www.googleapis.com/auth/calendar`) dans `.env`.
 - Rappels email J-30/J-7/J-1 générés automatiquement puis déclenchés par le scheduler `@nestjs/schedule` (toutes les minutes).
 
 ## Points à développer ensuite
