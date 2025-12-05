@@ -9,7 +9,8 @@
     "noEmit": true,
     "types": [
       "node",
-      "react"
+      "react",
+      "vitest/globals"
     ],
     "baseUrl": ".",
     "paths": {
