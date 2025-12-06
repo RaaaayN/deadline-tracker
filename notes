@@ -4,6 +4,12 @@ pnpm --filter @dossiertracker/api dev
 
 
 
+Pour injecter ces données de test dans la base, lance :
+pnpm --filter @dossiertracker/api exec prisma migrate deploy
+pnpm --filter @dossiertracker/api exec prisma generate
+pnpm --filter @dossiertracker/api run seed
+
+
 
 
 

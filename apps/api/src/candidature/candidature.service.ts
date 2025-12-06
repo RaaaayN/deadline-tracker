@@ -33,6 +33,7 @@ export class CandidatureService {
         },
         school: true,
         contest: true,
+        program: true,
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -47,13 +48,14 @@ export class CandidatureService {
   }
 
   async create(userId: string, dto: CreateCandidatureDto) {
-    this.assertTypeRules(dto.type, dto.diplomaName, dto.schoolId);
+    this.assertTypeRules(dto.type, dto.diplomaName, dto.schoolId, dto.programId);
     const created = await this.prisma.candidature.create({
       data: {
         userId,
         contestId: dto.contestId,
         type: dto.type,
         schoolId: dto.type === PrismaCandidatureType.concours ? null : dto.schoolId,
+        programId: dto.type === PrismaCandidatureType.concours ? null : dto.programId,
         diplomaName: dto.diplomaName,
         sessionLabel: dto.sessionLabel,
         status: 'draft',
@@ -65,13 +67,13 @@ export class CandidatureService {
           })),
         },
       },
-      include: { tasks: true },
+      include: { tasks: true, school: true, contest: true, program: true },
     });
 
     await this.syncDeadlines(userId, created.id);
     return this.prisma.candidature.findUnique({
       where: { id: created.id },
-      include: { tasks: true, school: true, contest: true },
+      include: { tasks: true, school: true, contest: true, program: true },
     });
   }
 
@@ -97,9 +99,10 @@ export class CandidatureService {
     const nextType = dto.type ?? (existing.type as PrismaCandidatureType);
     const nextDiplomaName = dto.diplomaName ?? existing.diplomaName;
     const nextSchoolId = nextType === PrismaCandidatureType.concours ? null : dto.schoolId ?? existing.schoolId;
+    const nextProgramId = nextType === PrismaCandidatureType.concours ? null : dto.programId ?? existing.programId;
     const nextSessionLabel = dto.sessionLabel ?? existing.sessionLabel;
 
-    this.assertTypeRules(nextType, nextDiplomaName, nextSchoolId);
+    this.assertTypeRules(nextType, nextDiplomaName, nextSchoolId, nextProgramId);
 
     return this.prisma.candidature.update({
       where: { id: candidatureId },
@@ -107,11 +110,12 @@ export class CandidatureService {
         type: nextType,
         contestId: dto.contestId,
         schoolId: nextSchoolId,
+        programId: nextProgramId,
         diplomaName: nextDiplomaName,
         sessionLabel: nextSessionLabel,
         status: dto.status,
       },
-      include: { tasks: true, school: true, contest: true },
+      include: { tasks: true, school: true, contest: true, program: true },
     });
   }
 
@@ -174,6 +178,10 @@ export class CandidatureService {
       candidature.type === PrismaCandidatureType.diplome && candidature.diplomaName
         ? { OR: [{ diplomaName: candidature.diplomaName }, { diplomaName: null }] }
         : {};
+    const programFilter =
+      candidature.type === PrismaCandidatureType.diplome && candidature.programId
+        ? { OR: [{ programId: candidature.programId }, { programId: null }] }
+        : {};
 
     const deadlines =
       candidature.type === PrismaCandidatureType.concours
@@ -186,6 +194,7 @@ export class CandidatureService {
               OR: [{ schoolId: null }, { schoolId: candidature.schoolId }],
               sessionLabel: candidature.sessionLabel,
               ...diplomaFilter,
+              ...programFilter,
             },
           });
 
@@ -220,9 +229,17 @@ export class CandidatureService {
     }
   }
 
-  private assertTypeRules(type: PrismaCandidatureType, diplomaName?: string | null, schoolId?: string | null) {
+  private assertTypeRules(
+    type: PrismaCandidatureType,
+    diplomaName?: string | null,
+    schoolId?: string | null,
+    programId?: string | null,
+  ) {
     if (type === PrismaCandidatureType.concours && schoolId) {
       throw new BadRequestException('Une candidature concours ne peut pas être liée à une école.');
+    }
+    if (type === PrismaCandidatureType.concours && programId) {
+      throw new BadRequestException('Une candidature concours ne peut pas être liée à un diplôme/programme.');
     }
     if (type === PrismaCandidatureType.diplome) {
       if (!schoolId) {

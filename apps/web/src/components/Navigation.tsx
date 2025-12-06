@@ -10,6 +10,8 @@ import { Button } from './ui/Button';
 
 const links = [
   { href: '/dashboard', label: 'Tableau de bord', authOnly: true },
+  { href: '/diplomas', label: 'Diplômes', authOnly: false },
+  { href: '/leaderboards', label: 'Classements', authOnly: false },
   { href: '/candidatures', label: 'Candidatures', authOnly: true },
   { href: '/deadlines', label: 'Échéances', authOnly: true },
   { href: '/settings', label: 'Paramètres', authOnly: true },

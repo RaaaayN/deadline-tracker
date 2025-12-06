@@ -17,6 +17,10 @@ export class UpdateCandidatureDto {
 
   @IsOptional()
   @IsString()
+  programId?: string;
+
+  @IsOptional()
+  @IsString()
   diplomaName?: string;
 
   @IsOptional()

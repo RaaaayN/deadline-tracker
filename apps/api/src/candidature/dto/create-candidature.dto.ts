@@ -23,6 +23,10 @@ export class CreateCandidatureDto {
   @IsString()
   schoolId?: string;
 
+  @IsOptional()
+  @IsString()
+  programId?: string;
+
   @IsString()
   sessionLabel!: string;
 

@@ -52,6 +52,26 @@ enum CandidatureType {
   diplome
 }
 
+enum ProgramType {
+  bachelor
+  master
+  msc
+  mba
+  emba
+  specialized_msc
+  executive_master
+  certificate
+  phd
+  other
+}
+
+enum ProgramFormat {
+  full_time
+  part_time
+  online
+  hybrid
+}
+
 model User {
   id           String        @id @default(cuid())
   email        String        @unique
@@ -71,8 +91,14 @@ model Contest {
   name         String
   year         Int
   url          String?
+  description  String?
+  examFormat   String?
+  feesCents    Int?
+  currency     String        @default("EUR")
+  contacts     String?
   deadlines    Deadline[]
   schools      School[]
+  programs     Program[]
   candidatures Candidature[]
   createdAt    DateTime      @default(now())
 
@@ -84,11 +110,108 @@ model School {
   name         String
   contest      Contest       @relation(fields: [contestId], references: [id], onDelete: Cascade)
   contestId    String
+  description  String?
+  website      String?
+  city         String?
+  country      String?
+  campuses     String[]      @default([])
+  contactEmail String?
+  contactPhone String?
+  tuitionCents Int?
+  currency     String        @default("EUR")
+  leaderboardEntries LeaderboardEntry[]
+  programs     Program[]
   deadlines    Deadline[]
   candidatures Candidature[]
   createdAt    DateTime      @default(now())
 
   @@unique([name, contestId], map: "name_contestId")
+}
+
+model Program {
+  id                     String           @id @default(cuid())
+  slug                   String           @unique
+  name                   String
+  type                   ProgramType
+  domain                 String
+  description            String?
+  objectives             String?
+  outcomes               String[]         @default([])
+  durationMonths         Int?
+  ects                   Int?
+  format                 ProgramFormat
+  campuses               String[]         @default([])
+  languages              String[]         @default([])
+  startPeriods           String[]         @default([])
+  tuitionCents           Int?
+  applicationFeeCents    Int?
+  currency               String           @default("EUR")
+  financing              String?
+  admissionPrerequisites String[]         @default([])
+  admissionTests         String[]         @default([])
+  admissionDocuments     String[]         @default([])
+  admissionProcess       String?
+  contactEmail           String?
+  contactPhone           String?
+  website                String?
+  school                 School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolId               String
+  contest                Contest?         @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  contestId              String?
+  courses                ProgramCourse[]
+  careers                ProgramCareer[]
+  leaderboardEntries    LeaderboardEntry[]
+  deadlines              Deadline[]
+  candidatures           Candidature[]
+  createdAt              DateTime         @default(now())
+
+  @@unique([name, schoolId], map: "program_name_school")
+}
+
+model ProgramCourse {
+  id          String   @id @default(cuid())
+  title       String
+  category    String?
+  description String?
+  program     Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  programId   String
+}
+
+model ProgramCareer {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  program     Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  programId   String
+}
+
+model Leaderboard {
+  id          String             @id @default(cuid())
+  slug        String             @unique
+  name        String
+  source      String
+  category    String?
+  region      String?
+  year        Int
+  url         String?
+  description String?
+  entries     LeaderboardEntry[]
+  createdAt   DateTime           @default(now())
+}
+
+model LeaderboardEntry {
+  id            String       @id @default(cuid())
+  rank          Int
+  score         Float?
+  notes         String?
+  school        School?      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolId      String?
+  program       Program?     @relation(fields: [programId], references: [id], onDelete: Cascade)
+  programId     String?
+  leaderboard   Leaderboard  @relation(fields: [leaderboardId], references: [id], onDelete: Cascade)
+  leaderboardId String
+
+  @@index([leaderboardId, rank])
 }
 
 model Deadline {
@@ -102,12 +225,14 @@ model Deadline {
   contestId   String
   school      School?      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   schoolId    String?
+  program     Program?     @relation(fields: [programId], references: [id], onDelete: Cascade)
+  programId   String?
   createdByAdmin Boolean   @default(true)
   reminders   Reminder[]
   tasks       Task[]
   createdAt   DateTime     @default(now())
 
-  @@unique([contestId, schoolId, title], map: "contestId_schoolId_title")
+  @@unique([contestId, schoolId, programId, title], map: "contestId_schoolId_programId_title")
 }
 
 model Candidature {
@@ -119,6 +244,8 @@ model Candidature {
   school     School?   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   schoolId   String?
   type       CandidatureType @default(concours)
+  program    Program?  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  programId  String?
   diplomaName String?
   sessionLabel String   @default("Session unique")
   status     String    @default("draft")

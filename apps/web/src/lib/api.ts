@@ -1,4 +1,15 @@
-import type { CandidatureType, Contest, Deadline, School, TaskStatus } from '@dossiertracker/shared';
+import type {
+  CandidatureType,
+  Contest,
+  Deadline,
+  Leaderboard,
+  LeaderboardEntry,
+  Program,
+  ProgramFormat,
+  ProgramType,
+  School,
+  TaskStatus,
+} from '@dossiertracker/shared';
 
 type FetchOptions = {
   method?: 'GET' | 'POST' | 'PATCH';
@@ -56,12 +67,35 @@ export function fetchSchools(contestId: string) {
   return apiFetch<School[]>(`/catalog/schools${query}`);
 }
 
-export function fetchDeadlines(contestId?: string, schoolId?: string) {
+export function fetchDeadlines(contestId?: string, schoolId?: string, programId?: string) {
   const params = new URLSearchParams();
   if (contestId) params.append('contestId', contestId);
   if (schoolId) params.append('schoolId', schoolId);
+  if (programId) params.append('programId', programId);
   const query = params.toString() ? `?${params.toString()}` : '';
   return apiFetch<Deadline[]>(`/catalog/deadlines${query}`);
+}
+
+export function fetchPrograms(filters?: { domain?: string; campus?: string; type?: ProgramType; format?: ProgramFormat }) {
+  const params = new URLSearchParams();
+  if (filters?.domain) params.set('domain', filters.domain);
+  if (filters?.campus) params.set('campus', filters.campus);
+  if (filters?.type) params.set('type', filters.type);
+  if (filters?.format) params.set('format', filters.format);
+  const query = params.toString() ? `?${params.toString()}` : '';
+  return apiFetch<Program[]>(`/catalog/programs${query}`);
+}
+
+export function fetchProgram(slug: string) {
+  return apiFetch<Program>(`/catalog/programs/${slug}`);
+}
+
+export function fetchLeaderboards() {
+  return apiFetch<Leaderboard[]>('/catalog/leaderboards');
+}
+
+export function fetchLeaderboard(slug: string) {
+  return apiFetch<Leaderboard & { entries: LeaderboardEntry[] }>(`/catalog/leaderboards/${slug}`);
 }
 
 export function createCandidature(
