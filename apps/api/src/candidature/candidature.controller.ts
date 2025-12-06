@@ -2,6 +2,7 @@ import { TaskStatus } from '@dossiertracker/shared';
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -15,6 +16,7 @@ import { Request } from 'express';
 import { CandidatureService } from './candidature.service';
 import { CreateCandidatureDto } from './dto/create-candidature.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { UpdateCandidatureDto } from './dto/update-candidature.dto';
 
 interface AuthedRequest extends Request {
   user: { userId: string };
@@ -40,6 +42,20 @@ export class CandidatureController {
     return this.candidatureService.addTask(req.user.userId, candidatureId, body);
   }
 
+  @Patch(':id')
+  updateCandidature(
+    @Req() req: AuthedRequest,
+    @Param('id') candidatureId: string,
+    @Body() body: UpdateCandidatureDto,
+  ) {
+    return this.candidatureService.updateCandidature(req.user.userId, candidatureId, body);
+  }
+
+  @Delete(':id')
+  deleteCandidature(@Req() req: AuthedRequest, @Param('id') candidatureId: string) {
+    return this.candidatureService.deleteCandidature(req.user.userId, candidatureId);
+  }
+
   @Patch('tasks/:id/status')
   updateTaskStatus(
     @Req() req: AuthedRequest,
@@ -47,6 +63,11 @@ export class CandidatureController {
     @Body('status') status: TaskStatus,
   ) {
     return this.candidatureService.updateTaskStatus(req.user.userId, taskId, status);
+  }
+
+  @Delete('tasks/:id')
+  deleteTask(@Req() req: AuthedRequest, @Param('id') taskId: string) {
+    return this.candidatureService.deleteTask(req.user.userId, taskId);
   }
 
   @Post(':id/sync-deadlines')

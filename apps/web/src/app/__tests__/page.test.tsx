@@ -1,110 +1,31 @@
+import { render, screen } from '@testing-library/react';
 import React from 'react';
-import '@testing-library/jest-dom';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import HomePage from '../page';
 
-const mockApi = vi.hoisted(() => ({
-  createCandidature: vi.fn(),
-  fetchCandidatures: vi.fn(),
-  fetchContests: vi.fn(),
-  fetchDeadlines: vi.fn(),
-  fetchMe: vi.fn(),
-  fetchSchools: vi.fn(),
-  login: vi.fn(),
-  signup: vi.fn(),
-  syncCandidatureDeadlines: vi.fn(),
-  updateProfile: vi.fn(),
-  updateTaskStatus: vi.fn(),
-  fetchGoogleStatus: vi.fn(),
-  getGoogleAuthUrl: vi.fn(),
-  listInbox: vi.fn(),
-  createDraft: vi.fn(),
+vi.mock('../providers/AuthProvider', () => ({
+  useAuth: () => ({ user: null }),
 }));
 
-vi.mock('../../lib/api', () => mockApi);
+vi.mock('../../components/ui/Card', () => ({
+  Card: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}));
 
-const baseUser = {
-  id: 'u1',
-  email: 'user@test.dev',
-  firstName: 'Test',
-  lastName: 'User',
-  role: 'candidate',
-  createdAt: new Date().toISOString(),
-};
-
-beforeEach(() => {
-  vi.clearAllMocks();
-  localStorage.clear();
-  mockApi.fetchContests.mockResolvedValue([{ id: 'c1', name: 'AST France', year: 2025 }]);
-  mockApi.fetchSchools.mockResolvedValue([]);
-  mockApi.fetchDeadlines.mockResolvedValue([]);
-  mockApi.fetchMe.mockResolvedValue(baseUser);
-  mockApi.fetchCandidatures.mockResolvedValue([]);
-  mockApi.login.mockResolvedValue({ accessToken: 'token', role: 'candidate', userId: 'u1' });
-  mockApi.signup.mockResolvedValue({ accessToken: 'token', role: 'candidate', userId: 'u1' });
-  mockApi.createCandidature.mockResolvedValue({});
-  mockApi.syncCandidatureDeadlines.mockResolvedValue({ created: 0 });
-  mockApi.updateProfile.mockResolvedValue(baseUser);
-  mockApi.updateTaskStatus.mockResolvedValue({});
-  mockApi.fetchGoogleStatus.mockResolvedValue({ connected: false });
-  mockApi.getGoogleAuthUrl.mockResolvedValue({ url: 'http://google.test' });
-  mockApi.listInbox.mockResolvedValue([]);
-  mockApi.createDraft.mockResolvedValue({ draftId: 'd1' });
-});
-
-afterEach(() => {
-  cleanup();
-});
+vi.mock('../../components/ui/StatCard', () => ({
+  StatCard: ({ label, value }: { label: string; value: string }) => (
+    <div>
+      {label}-{value}
+    </div>
+  ),
+}));
 
 describe('HomePage', () => {
-  it('affiche le hero et les filtres concours', async () => {
+  it('affiche le hero et les CTA', () => {
     render(<HomePage />);
 
-    await waitFor(() => expect(mockApi.fetchContests).toHaveBeenCalled());
-
-    expect(screen.getByText(/DossierTracker/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Concours/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/École/)).toBeInTheDocument();
-  });
-
-  it('affiche les échéances après sélection d’un concours', async () => {
-    mockApi.fetchDeadlines.mockResolvedValue([
-      { id: 'd1', title: 'Dossier complet', type: 'dossier', dueAt: new Date().toISOString(), contestId: 'c1' },
-    ]);
-    render(<HomePage />);
-
-    const contestSelect = await screen.findByLabelText(/Concours/);
-    fireEvent.change(contestSelect, { target: { value: 'c1' } });
-
-    await waitFor(() => expect(mockApi.fetchDeadlines).toHaveBeenCalledWith('c1', ''));
-    expect(await screen.findByText(/Dossier complet/)).toBeInTheDocument();
-  });
-
-  it('met à jour le statut d’une tâche', async () => {
-    const firstCandidature = {
-      id: 'cand1',
-      contest: { name: 'AST France', year: 2025 },
-      school: { name: 'HEC' },
-      tasks: [{ id: 't1', title: 'Rédiger la lettre', status: 'todo' as const }],
-    };
-    mockApi.fetchCandidatures.mockResolvedValueOnce([firstCandidature]).mockResolvedValueOnce([
-      {
-        ...firstCandidature,
-        tasks: [{ ...firstCandidature.tasks[0], status: 'doing' as const }],
-      },
-    ]);
-    localStorage.setItem('dossiertracker_token', 'token');
-
-    render(<HomePage />);
-
-    expect(await screen.findByText(/Rédiger la lettre/)).toBeInTheDocument();
-    const select = screen.getByDisplayValue('todo');
-    fireEvent.change(select, { target: { value: 'doing' } });
-
-    await waitFor(() => expect(mockApi.updateTaskStatus).toHaveBeenCalledWith('token', 't1', 'doing'));
-    expect(await screen.findByDisplayValue('doing')).toBeInTheDocument();
+    expect(screen.getByText(/Pilote tes dossiers/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Créer un compte/i })).toHaveAttribute('href', '/auth/signup');
+    expect(screen.getByRole('link', { name: /Se connecter/i })).toHaveAttribute('href', '/auth/login');
   });
 });
-

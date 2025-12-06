@@ -32,3 +32,4 @@ export function getSuggestionForTask(title: string, deadline?: DeadlineLite | nu
   return 'Découpe la tâche en sous-étapes, assigne des dates et réserve des créneaux.';
 }
 
+

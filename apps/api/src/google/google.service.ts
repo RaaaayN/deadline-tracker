@@ -1,6 +1,7 @@
+import { createHash } from 'crypto';
+
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { google, Auth, calendar_v3, gmail_v1 } from 'googleapis';
-import { createHash } from 'crypto';
 
 import { PrismaService } from '../prisma.service';
 
@@ -8,6 +9,7 @@ type DeadlineForSync = {
   id: string;
   title: string;
   dueAt: Date;
+  candidatureId: string;
 };
 
 type GmailMessage = {
@@ -227,13 +229,20 @@ export class GoogleService {
     calendarId: string,
     deadline: DeadlineForSync,
   ): Promise<boolean> {
-    const eventId = this.buildEventId(deadline.id);
+    const eventId = this.buildEventId(deadline.id, deadline.candidatureId);
     const requestBody = {
       summary: deadline.title,
       description: 'Échéance DossierTracker synchronisée automatiquement.',
       start: { dateTime: deadline.dueAt.toISOString(), timeZone: 'Europe/Paris' },
       end: { dateTime: deadline.dueAt.toISOString(), timeZone: 'Europe/Paris' },
       reminders: { useDefault: true },
+      extendedProperties: {
+        private: {
+          source: 'dossiertracker',
+          deadlineId: deadline.id,
+          candidatureId: deadline.candidatureId,
+        },
+      },
     };
 
     try {
@@ -331,8 +340,9 @@ export class GoogleService {
     return Buffer.from(message).toString('base64url');
   }
 
-  private buildEventId(deadlineId: string): string {
-    const sanitized = `dt-${deadlineId}`.replace(/[^a-zA-Z0-9_-]/g, '-');
+  private buildEventId(deadlineId: string, candidatureId: string): string {
+    const raw = `dt-${deadlineId}-${candidatureId}`;
+    const sanitized = raw.replace(/[^a-zA-Z0-9_-]/g, '-');
     if (sanitized.length >= 5 && sanitized.length <= 60) {
       return sanitized;
     }

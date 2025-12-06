@@ -1,6 +1,7 @@
 import { TaskStatus as SharedTaskStatus } from '@dossiertracker/shared';
-import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import {
+  CandidatureType as PrismaCandidatureType,
   ReminderChannel as PrismaReminderChannel,
   ReminderStatus as PrismaReminderStatus,
   TaskStatus as PrismaTaskStatus,
@@ -11,6 +12,7 @@ import { PrismaService } from '../prisma.service';
 
 import { CreateCandidatureDto } from './dto/create-candidature.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { UpdateCandidatureDto } from './dto/update-candidature.dto';
 import { getSuggestionForTask } from './suggestions';
 
 @Injectable()
@@ -45,11 +47,15 @@ export class CandidatureService {
   }
 
   async create(userId: string, dto: CreateCandidatureDto) {
+    this.assertTypeRules(dto.type, dto.diplomaName, dto.schoolId);
     const created = await this.prisma.candidature.create({
       data: {
         userId,
         contestId: dto.contestId,
-        schoolId: dto.schoolId,
+        type: dto.type,
+        schoolId: dto.type === PrismaCandidatureType.concours ? null : dto.schoolId,
+        diplomaName: dto.diplomaName,
+        sessionLabel: dto.sessionLabel,
         status: 'draft',
         tasks: {
           create: dto.initialTasks?.map((task) => ({
@@ -82,6 +88,39 @@ export class CandidatureService {
     });
   }
 
+  async updateCandidature(userId: string, candidatureId: string, dto: UpdateCandidatureDto) {
+    const existing = await this.prisma.candidature.findUnique({ where: { id: candidatureId } });
+    if (!existing || existing.userId !== userId) {
+      throw new ForbiddenException();
+    }
+
+    const nextType = dto.type ?? (existing.type as PrismaCandidatureType);
+    const nextDiplomaName = dto.diplomaName ?? existing.diplomaName;
+    const nextSchoolId = nextType === PrismaCandidatureType.concours ? null : dto.schoolId ?? existing.schoolId;
+    const nextSessionLabel = dto.sessionLabel ?? existing.sessionLabel;
+
+    this.assertTypeRules(nextType, nextDiplomaName, nextSchoolId);
+
+    return this.prisma.candidature.update({
+      where: { id: candidatureId },
+      data: {
+        type: nextType,
+        contestId: dto.contestId,
+        schoolId: nextSchoolId,
+        diplomaName: nextDiplomaName,
+        sessionLabel: nextSessionLabel,
+        status: dto.status,
+      },
+      include: { tasks: true, school: true, contest: true },
+    });
+  }
+
+  async deleteCandidature(userId: string, candidatureId: string) {
+    await this.assertOwnership(userId, candidatureId);
+    await this.prisma.candidature.delete({ where: { id: candidatureId } });
+    return { deleted: true };
+  }
+
   async updateTaskStatus(userId: string, taskId: string, status: SharedTaskStatus) {
     const task = await this.prisma.task.findUnique({ where: { id: taskId } });
     if (!task) {
@@ -92,6 +131,16 @@ export class CandidatureService {
       where: { id: taskId },
       data: { status: status as PrismaTaskStatus },
     });
+  }
+
+  async deleteTask(userId: string, taskId: string) {
+    const task = await this.prisma.task.findUnique({ where: { id: taskId }, select: { candidatureId: true } });
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+    await this.assertOwnership(userId, task.candidatureId);
+    await this.prisma.task.delete({ where: { id: taskId } });
+    return { deleted: true };
   }
 
   async listSuggestions(userId: string, candidatureId: string) {
@@ -121,13 +170,23 @@ export class CandidatureService {
       throw new ForbiddenException();
     }
 
+    const diplomaFilter =
+      candidature.type === PrismaCandidatureType.diplome && candidature.diplomaName
+        ? { OR: [{ diplomaName: candidature.diplomaName }, { diplomaName: null }] }
+        : {};
+
     const deadlines =
-      candidature.schoolId === null
+      candidature.type === PrismaCandidatureType.concours
         ? await this.prisma.deadline.findMany({
-            where: { contestId: candidature.contestId },
+            where: { contestId: candidature.contestId, schoolId: null, sessionLabel: candidature.sessionLabel },
           })
         : await this.prisma.deadline.findMany({
-            where: { contestId: candidature.contestId, OR: [{ schoolId: null }, { schoolId: candidature.schoolId }] },
+            where: {
+              contestId: candidature.contestId,
+              OR: [{ schoolId: null }, { schoolId: candidature.schoolId }],
+              sessionLabel: candidature.sessionLabel,
+              ...diplomaFilter,
+            },
           });
 
     const existing = await this.prisma.task.findMany({
@@ -150,7 +209,7 @@ export class CandidatureService {
     }
 
     await this.createReminders(userId, deadlines);
-    await this.syncDeadlinesToCalendar(userId, deadlines);
+    await this.syncDeadlinesToCalendar(userId, deadlines, candidatureId);
     return { created: toCreate.length };
   }
 
@@ -158,6 +217,20 @@ export class CandidatureService {
     const cand = await this.prisma.candidature.findUnique({ where: { id: candidatureId } });
     if (!cand || cand.userId !== userId) {
       throw new ForbiddenException();
+    }
+  }
+
+  private assertTypeRules(type: PrismaCandidatureType, diplomaName?: string | null, schoolId?: string | null) {
+    if (type === PrismaCandidatureType.concours && schoolId) {
+      throw new BadRequestException('Une candidature concours ne peut pas être liée à une école.');
+    }
+    if (type === PrismaCandidatureType.diplome) {
+      if (!schoolId) {
+        throw new BadRequestException('Une candidature diplôme doit être liée à une école.');
+      }
+      if (!diplomaName || diplomaName.trim() === '') {
+        throw new BadRequestException('Un diplôme est requis pour une candidature de type diplôme.');
+      }
     }
   }
 
@@ -190,12 +263,19 @@ export class CandidatureService {
     });
   }
 
-  private async syncDeadlinesToCalendar(userId: string, deadlines: { id: string; title: string; dueAt: Date }[]) {
+  private async syncDeadlinesToCalendar(
+    userId: string,
+    deadlines: { id: string; title: string; dueAt: Date }[],
+    candidatureId: string,
+  ) {
     if (deadlines.length === 0) {
       return;
     }
     try {
-      await this.google.syncDeadlinesToCalendar(userId, deadlines);
+      await this.google.syncDeadlinesToCalendar(
+        userId,
+        deadlines.map((dl) => ({ ...dl, candidatureId })),
+      );
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Google Calendar sync failed';
       this.logger.warn(`[Calendar] sync skipped for user ${userId}: ${message}`);

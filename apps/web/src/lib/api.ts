@@ -1,3 +1,5 @@
+import type { CandidatureType, Contest, Deadline, School, TaskStatus } from '@dossiertracker/shared';
+
 type FetchOptions = {
   method?: 'GET' | 'POST' | 'PATCH';
   body?: unknown;
@@ -25,13 +27,33 @@ async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T>
 
 type AuthPayload = { email: string; password: string; firstName?: string; lastName?: string };
 
+export type ApiTask = {
+  id: string;
+  title: string;
+  status: TaskStatus;
+  suggestion?: string;
+  deadlineId?: string;
+  candidatureId?: string;
+  deadline?: Deadline;
+};
+
+export type ApiCandidature = {
+  id: string;
+  contest: Contest & { year: number };
+  school?: { id?: string; name: string };
+  diplomaName?: string;
+  sessionLabel: string;
+  type: CandidatureType;
+  tasks: ApiTask[];
+};
+
 export function fetchContests() {
-  return apiFetch<{ id: string; name: string; year: number }[]>('/catalog/contests');
+  return apiFetch<Contest[]>('/catalog/contests');
 }
 
 export function fetchSchools(contestId: string) {
   const query = contestId ? `?contestId=${contestId}` : '';
-  return apiFetch<{ id: string; name: string; contestId: string }[]>(`/catalog/schools${query}`);
+  return apiFetch<School[]>(`/catalog/schools${query}`);
 }
 
 export function fetchDeadlines(contestId?: string, schoolId?: string) {
@@ -39,13 +61,33 @@ export function fetchDeadlines(contestId?: string, schoolId?: string) {
   if (contestId) params.append('contestId', contestId);
   if (schoolId) params.append('schoolId', schoolId);
   const query = params.toString() ? `?${params.toString()}` : '';
-  return apiFetch<
-    { id: string; title: string; type: string; dueAt: string; contestId: string; schoolId?: string }[]
-  >(`/catalog/deadlines${query}`);
+  return apiFetch<Deadline[]>(`/catalog/deadlines${query}`);
 }
 
-export function createCandidature(token: string, payload: { contestId: string; schoolId?: string }) {
+export function createCandidature(
+  token: string,
+  payload: { contestId: string; type: CandidatureType; sessionLabel: string; schoolId?: string; diplomaName?: string },
+) {
   return apiFetch('/candidatures', { method: 'POST', body: payload, token });
+}
+
+export function updateCandidature(
+  token: string,
+  candidatureId: string,
+  payload: {
+    contestId?: string;
+    schoolId?: string;
+    diplomaName?: string;
+    sessionLabel?: string;
+    status?: string;
+    type?: CandidatureType;
+  },
+) {
+  return apiFetch(`/candidatures/${candidatureId}`, { method: 'PATCH', body: payload, token });
+}
+
+export function deleteCandidature(token: string, candidatureId: string) {
+  return apiFetch<{ deleted: true }>(`/candidatures/${candidatureId}`, { method: 'DELETE', token });
 }
 
 export function login(payload: AuthPayload) {
@@ -77,14 +119,7 @@ export function updateProfile(token: string, payload: { firstName?: string; last
 }
 
 export function fetchCandidatures(token: string) {
-  return apiFetch<
-    {
-      id: string;
-      contest: { name: string; year: number };
-      school?: { name: string };
-      tasks: { id: string; title: string; status: string; suggestion?: string }[];
-    }[]
-  >('/candidatures', { token });
+  return apiFetch<ApiCandidature[]>('/candidatures', { token });
 }
 
 export function syncCandidatureDeadlines(token: string, candidatureId: string) {
@@ -94,12 +129,16 @@ export function syncCandidatureDeadlines(token: string, candidatureId: string) {
   });
 }
 
-export function updateTaskStatus(token: string, taskId: string, status: 'todo' | 'doing' | 'done') {
+export function updateTaskStatus(token: string, taskId: string, status: TaskStatus) {
   return apiFetch(`/candidatures/tasks/${taskId}/status`, {
     method: 'PATCH',
     body: { status },
     token,
   });
+}
+
+export function deleteTask(token: string, taskId: string) {
+  return apiFetch<{ deleted: true }>(`/candidatures/tasks/${taskId}`, { method: 'DELETE', token });
 }
 
 export function getGoogleAuthUrl(token: string) {

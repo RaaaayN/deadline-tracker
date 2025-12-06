@@ -11,3 +11,4 @@ ALTER TABLE "Reminder"
 CREATE UNIQUE INDEX "Reminder_userId_deadlineId_channel_sendAt_key"
   ON "Reminder"("userId", "deadlineId", "channel", "sendAt");
 
+

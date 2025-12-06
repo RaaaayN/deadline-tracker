@@ -5,9 +5,9 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { AuthModule } from './auth/auth.module';
 import { CandidatureModule } from './candidature/candidature.module';
 import { CatalogModule } from './catalog/catalog.module';
+import { GoogleModule } from './google/google.module';
 import { PrismaService } from './prisma.service';
 import { ReminderModule } from './reminder/reminder.module';
-import { GoogleModule } from './google/google.module';
 
 @Module({
   imports: [

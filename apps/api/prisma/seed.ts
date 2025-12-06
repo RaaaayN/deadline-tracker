@@ -1,4 +1,4 @@
-import { PrismaClient, DeadlineType, TaskStatus, ReminderChannel } from '@prisma/client';
+import { PrismaClient, DeadlineType, TaskStatus, ReminderChannel, CandidatureType } from '@prisma/client';
 import { hash } from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -6,93 +6,226 @@ const prisma = new PrismaClient();
 async function main() {
   const contests = [
     {
-      name: 'HEC AST',
-      year: 2025,
-      url: 'https://www.hec.edu/',
+      name: 'Masters Sélectifs 2026',
+      year: 2026,
+      url: 'https://masters2026.example.com',
+      contestDeadlines: [],
       schools: [
         {
           name: 'HEC Paris',
-          deadlines: [
-            { title: 'Clôture inscriptions', type: DeadlineType.registration, dueAt: '2025-02-01T23:59:00Z' },
-            { title: 'Résultats admissibilité', type: DeadlineType.result, dueAt: '2025-04-15T12:00:00Z' },
+          level: 'Bac+3/4',
+          diplomas: [
+            {
+              name: 'MiM',
+              deadlines: [
+                {
+                  title: 'Dossier MiM - Session Hiver',
+                  type: DeadlineType.registration,
+                  dueAt: '2026-01-20T23:59:00Z',
+                  sessionLabel: 'HEC MiM Hiver 2026',
+                },
+                {
+                  title: 'Résultats MiM - Hiver',
+                  type: DeadlineType.result,
+                  dueAt: '2026-02-20T12:00:00Z',
+                  sessionLabel: 'HEC MiM Hiver 2026',
+                },
+              ],
+            },
+            {
+              name: 'MBA',
+              deadlines: [
+                {
+                  title: 'Dossier MBA - Session Printemps',
+                  type: DeadlineType.registration,
+                  dueAt: '2026-03-01T23:59:00Z',
+                  sessionLabel: 'HEC MBA Printemps 2026',
+                },
+                {
+                  title: 'Résultats MBA - Printemps',
+                  type: DeadlineType.result,
+                  dueAt: '2026-04-01T12:00:00Z',
+                  sessionLabel: 'HEC MBA Printemps 2026',
+                },
+              ],
+            },
+          ],
+        },
+        {
+          name: 'ESCP',
+          level: 'Bac+3/4',
+          diplomas: [
+            {
+              name: 'MSc Finance',
+              deadlines: [
+                {
+                  title: 'Dossier MSc Finance - Session Hiver',
+                  type: DeadlineType.registration,
+                  dueAt: '2026-01-25T23:59:00Z',
+                  sessionLabel: 'ESCP MSc Finance Hiver 2026',
+                },
+                {
+                  title: 'Résultats MSc Finance - Hiver',
+                  type: DeadlineType.result,
+                  dueAt: '2026-02-22T12:00:00Z',
+                  sessionLabel: 'ESCP MSc Finance Hiver 2026',
+                },
+              ],
+            },
+            {
+              name: 'MSc Data',
+              deadlines: [
+                {
+                  title: 'Dossier MSc Data - Session Été',
+                  type: DeadlineType.registration,
+                  dueAt: '2026-05-10T23:59:00Z',
+                  sessionLabel: 'ESCP MSc Data Été 2026',
+                },
+                {
+                  title: 'Résultats MSc Data - Été',
+                  type: DeadlineType.result,
+                  dueAt: '2026-06-05T12:00:00Z',
+                  sessionLabel: 'ESCP MSc Data Été 2026',
+                },
+              ],
+            },
+          ],
+        },
+        {
+          name: 'EDHEC',
+          level: 'Bac+3/4',
+          diplomas: [
+            {
+              name: 'MiM',
+              deadlines: [
+                {
+                  title: 'Dossier MiM - Session Printemps',
+                  type: DeadlineType.registration,
+                  dueAt: '2026-03-05T23:59:00Z',
+                  sessionLabel: 'EDHEC MiM Printemps 2026',
+                },
+                {
+                  title: 'Résultats MiM - Printemps',
+                  type: DeadlineType.result,
+                  dueAt: '2026-04-05T12:00:00Z',
+                  sessionLabel: 'EDHEC MiM Printemps 2026',
+                },
+              ],
+            },
+            {
+              name: 'MSc Data',
+              deadlines: [
+                {
+                  title: 'Dossier MSc Data - Session Automne',
+                  type: DeadlineType.registration,
+                  dueAt: '2026-09-01T23:59:00Z',
+                  sessionLabel: 'EDHEC MSc Data Automne 2026',
+                },
+              ],
+            },
+          ],
+        },
+        {
+          name: 'INSEAD',
+          level: 'Bac+4/5',
+          diplomas: [
+            {
+              name: 'MBA',
+              deadlines: [
+                {
+                  title: 'Dossier MBA INSEAD - Session Hiver',
+                  type: DeadlineType.registration,
+                  dueAt: '2026-02-01T23:59:00Z',
+                  sessionLabel: 'INSEAD MBA Hiver 2026',
+                },
+                {
+                  title: 'Résultats MBA INSEAD - Hiver',
+                  type: DeadlineType.result,
+                  dueAt: '2026-03-01T12:00:00Z',
+                  sessionLabel: 'INSEAD MBA Hiver 2026',
+                },
+              ],
+            },
+            {
+              name: 'EMBA',
+              deadlines: [
+                {
+                  title: 'Dossier EMBA INSEAD - Session Été',
+                  type: DeadlineType.registration,
+                  dueAt: '2026-06-15T23:59:00Z',
+                  sessionLabel: 'INSEAD EMBA Été 2026',
+                },
+              ],
+            },
           ],
         },
       ],
     },
     {
-      name: 'ESSEC AST',
-      year: 2025,
-      url: 'https://www.essec.edu/',
-      schools: [
-        {
-          name: 'ESSEC Business School',
-          deadlines: [
-            { title: 'Clôture inscriptions', type: DeadlineType.registration, dueAt: '2025-02-20T23:59:00Z' },
-            { title: 'Résultats admissibilité', type: DeadlineType.result, dueAt: '2025-04-25T12:00:00Z' },
-            { title: 'Oraux', type: DeadlineType.oral, dueAt: '2025-05-15T08:00:00Z' },
-          ],
-        },
+      name: 'GRE General 2026',
+      year: 2026,
+      url: 'https://www.ets.org/gre',
+      contestDeadlines: [
+        { title: 'Session Février - Clôture', type: DeadlineType.registration, dueAt: '2026-01-31T23:59:00Z', sessionLabel: 'GRE Février 2026' },
+        { title: 'Session Mai - Clôture', type: DeadlineType.registration, dueAt: '2026-04-15T23:59:00Z', sessionLabel: 'GRE Mai 2026' },
+        { title: 'Résultats GRE (session Février)', type: DeadlineType.result, dueAt: '2026-02-28T12:00:00Z', sessionLabel: 'GRE Février 2026' },
       ],
+      schools: [],
     },
     {
-      name: 'Passerelle',
-      year: 2025,
-      url: 'https://www.passerelle-esc.com/',
-      schools: [
-        {
-          name: 'EM Grenoble',
-          deadlines: [
-            { title: 'Inscription', type: DeadlineType.registration, dueAt: '2025-03-10T23:59:00Z' },
-            { title: 'Oral', type: DeadlineType.oral, dueAt: '2025-04-30T09:00:00Z' },
-          ],
-        },
-        {
-          name: 'EM Strasbourg',
-          deadlines: [
-            { title: 'Inscription', type: DeadlineType.registration, dueAt: '2025-03-10T23:59:00Z' },
-            { title: 'Résultats', type: DeadlineType.result, dueAt: '2025-05-20T12:00:00Z' },
-          ],
-        },
+      name: 'TOEFL iBT 2026',
+      year: 2026,
+      url: 'https://www.ets.org/toefl',
+      contestDeadlines: [
+        { title: 'Session Mars - Clôture', type: DeadlineType.registration, dueAt: '2026-02-28T23:59:00Z', sessionLabel: 'TOEFL Mars 2026' },
+        { title: 'Session Juin - Clôture', type: DeadlineType.registration, dueAt: '2026-05-20T23:59:00Z', sessionLabel: 'TOEFL Juin 2026' },
+        { title: 'Résultats TOEFL (session Mars)', type: DeadlineType.result, dueAt: '2026-03-15T12:00:00Z', sessionLabel: 'TOEFL Mars 2026' },
       ],
+      schools: [],
     },
     {
-      name: 'Tremplin',
-      year: 2025,
-      url: 'https://www.concours-tremplin.fr/',
-      schools: [
-        {
-          name: 'NEOMA BS',
-          deadlines: [
-            { title: 'Inscription', type: DeadlineType.registration, dueAt: '2025-03-05T23:59:00Z' },
-            { title: 'Résultats admissibilité', type: DeadlineType.result, dueAt: '2025-04-22T12:00:00Z' },
-            { title: 'Oral', type: DeadlineType.oral, dueAt: '2025-05-05T08:00:00Z' },
-          ],
-        },
-        {
-          name: 'KEDGE BS',
-          deadlines: [
-            { title: 'Inscription', type: DeadlineType.registration, dueAt: '2025-03-08T23:59:00Z' },
-            { title: 'Résultats admissibilité', type: DeadlineType.result, dueAt: '2025-04-24T12:00:00Z' },
-          ],
-        },
+      name: 'IELTS Academic 2026',
+      year: 2026,
+      url: 'https://www.ielts.org/',
+      contestDeadlines: [
+        { title: 'Session Avril - Clôture', type: DeadlineType.registration, dueAt: '2026-03-25T23:59:00Z', sessionLabel: 'IELTS Avril 2026' },
+        { title: 'Session Juillet - Clôture', type: DeadlineType.registration, dueAt: '2026-06-10T23:59:00Z', sessionLabel: 'IELTS Juillet 2026' },
+        { title: 'Résultats IELTS (session Avril)', type: DeadlineType.result, dueAt: '2026-04-20T12:00:00Z', sessionLabel: 'IELTS Avril 2026' },
       ],
+      schools: [],
     },
     {
-      name: 'Officiel Décembre',
-      year: 2025,
-      url: 'https://www.dossiertracker.test/decembre',
-      schools: [
-        {
-          name: 'Suivi DossierTracker',
-          deadlines: [
-            { title: 'Dossier complet (Décembre)', type: DeadlineType.registration, dueAt: '2025-12-08T09:00:00Z' },
-            { title: 'Résultats pré-admissibilité', type: DeadlineType.result, dueAt: '2025-12-10T12:00:00Z' },
-            { title: 'Oraux de confirmation', type: DeadlineType.oral, dueAt: '2025-12-12T08:30:00Z' },
-          ],
-        },
+      name: 'TOEIC Public 2026',
+      year: 2026,
+      url: 'https://www.ets.org/toeic',
+      contestDeadlines: [
+        { title: 'Session Février - Clôture', type: DeadlineType.registration, dueAt: '2026-01-20T23:59:00Z', sessionLabel: 'TOEIC Février 2026' },
+        { title: 'Session Mai - Clôture', type: DeadlineType.registration, dueAt: '2026-04-20T23:59:00Z', sessionLabel: 'TOEIC Mai 2026' },
+        { title: 'Résultats TOEIC (session Février)', type: DeadlineType.result, dueAt: '2026-02-15T12:00:00Z', sessionLabel: 'TOEIC Février 2026' },
       ],
+      schools: [],
+    },
+    {
+      name: 'TAGE MAGE 2026',
+      year: 2026,
+      url: 'https://www.tagemage.fr/',
+      contestDeadlines: [
+        { title: 'Session Mars - Clôture', type: DeadlineType.registration, dueAt: '2026-02-18T23:59:00Z', sessionLabel: 'TAGE MAGE Mars 2026' },
+        { title: 'Session Juin - Clôture', type: DeadlineType.registration, dueAt: '2026-05-25T23:59:00Z', sessionLabel: 'TAGE MAGE Juin 2026' },
+        { title: 'Résultats TAGE MAGE (session Mars)', type: DeadlineType.result, dueAt: '2026-03-25T12:00:00Z', sessionLabel: 'TAGE MAGE Mars 2026' },
+      ],
+      schools: [],
     },
   ];
+
+  // Purge old catalog and user data to avoid legacy concours/écoles
+  await prisma.task.deleteMany();
+  await prisma.reminder.deleteMany();
+  await prisma.document.deleteMany();
+  await prisma.candidature.deleteMany();
+  await prisma.deadline.deleteMany();
+  await prisma.school.deleteMany();
+  await prisma.contest.deleteMany();
 
   for (const contest of contests) {
     const createdContest = await prisma.contest.upsert({
@@ -105,6 +238,22 @@ async function main() {
       },
     });
 
+    if (contest.contestDeadlines?.length) {
+      await prisma.deadline.createMany({
+        data: contest.contestDeadlines.map((dl) => ({
+          title: dl.title,
+          type: dl.type,
+          dueAt: dl.dueAt,
+          contestId: createdContest.id,
+          schoolId: null,
+          createdByAdmin: true,
+          diplomaName: dl.diplomaName,
+          sessionLabel: dl.sessionLabel,
+        })),
+        skipDuplicates: true,
+      });
+    }
+
     for (const school of contest.schools) {
       const createdSchool = await prisma.school.upsert({
         where: { name_contestId: { name: school.name, contestId: createdContest.id } },
@@ -115,25 +264,22 @@ async function main() {
         },
       });
 
-      for (const dl of school.deadlines) {
-        await prisma.deadline.upsert({
-          where: {
-            contestId_schoolId_title: {
+      if (school.diplomas?.length) {
+        for (const diploma of school.diplomas) {
+          await prisma.deadline.createMany({
+            data: diploma.deadlines.map((dl) => ({
+              title: dl.title,
+              type: dl.type,
+              dueAt: dl.dueAt,
               contestId: createdContest.id,
               schoolId: createdSchool.id,
-              title: dl.title,
-            },
-          },
-          update: {},
-          create: {
-            title: dl.title,
-            type: dl.type,
-            dueAt: dl.dueAt,
-            contestId: createdContest.id,
-            schoolId: createdSchool.id,
-            createdByAdmin: true,
-          },
-        });
+              createdByAdmin: true,
+              diplomaName: diploma.name,
+              sessionLabel: dl.sessionLabel,
+            })),
+            skipDuplicates: true,
+          });
+        }
       }
     }
   }
@@ -152,102 +298,83 @@ async function main() {
     },
   });
 
-  const hecContest = await prisma.contest.findFirst({ where: { name: 'HEC AST', year: 2025 } });
-  const hecSchool = hecContest
-    ? await prisma.school.findFirst({ where: { contestId: hecContest.id, name: 'HEC Paris' } })
-    : null;
-  const hecDeadline = hecContest
-    ? await prisma.deadline.findFirst({
-        where: { contestId: hecContest.id, title: 'Clôture inscriptions' },
-      })
-    : null;
+  const astContest = await prisma.contest.findFirst({ where: { name: 'AST 2026', year: 2026 } });
+  const mastersContest = await prisma.contest.findFirst({ where: { name: 'Masters Sélectifs 2026', year: 2026 } });
 
-  if (hecContest && hecSchool) {
-    const candidature =
+  if (astContest) {
+    const concoursCandidature =
       (await prisma.candidature.findFirst({
-        where: { userId: demoUser.id, contestId: hecContest.id, schoolId: hecSchool.id },
+        where: { userId: demoUser.id, contestId: astContest.id },
       })) ||
       (await prisma.candidature.create({
         data: {
           userId: demoUser.id,
-          contestId: hecContest.id,
-          schoolId: hecSchool.id,
+          contestId: astContest.id,
+          type: CandidatureType.concours,
           status: 'draft',
+          diplomaName: 'AST Grande École',
         },
       }));
 
-    await prisma.task.upsert({
-      where: { id: `${candidature.id}-cv` },
-      update: {},
-      create: {
-        id: `${candidature.id}-cv`,
-        title: 'Mettre à jour le CV',
-        status: TaskStatus.todo,
-        candidatureId: candidature.id,
-        tips: 'Utilise un modèle 1 page clair, avec résultats académiques.',
-      },
-    });
+    const astDeadlines = await prisma.deadline.findMany({ where: { contestId: astContest.id } });
 
-    if (hecDeadline) {
+    for (const dl of astDeadlines) {
       await prisma.task.upsert({
-        where: { id: `${candidature.id}-inscription` },
+        where: { id: `${concoursCandidature.id}-${dl.id}` },
         update: {},
         create: {
-          id: `${candidature.id}-inscription`,
-          title: 'Finaliser inscription HEC',
+          id: `${concoursCandidature.id}-${dl.id}`,
+          title: dl.title,
           status: TaskStatus.todo,
-          candidatureId: candidature.id,
-          deadlineId: hecDeadline.id,
-        },
-      });
-
-      await prisma.reminder.upsert({
-        where: { id: `${demoUser.id}-${hecDeadline.id}-email` },
-        update: {},
-        create: {
-          id: `${demoUser.id}-${hecDeadline.id}-email`,
-          userId: demoUser.id,
-          deadlineId: hecDeadline.id,
-          channel: ReminderChannel.email,
-          sendAt: new Date(new Date(hecDeadline.dueAt).getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(), // J-7
+          candidatureId: concoursCandidature.id,
+          deadlineId: dl.id,
         },
       });
     }
   }
 
-  const decemberContest = await prisma.contest.findFirst({ where: { name: 'Officiel Décembre', year: 2025 } });
-  const decemberSchool = decemberContest
-    ? await prisma.school.findFirst({ where: { contestId: decemberContest.id, name: 'Suivi DossierTracker' } })
-    : null;
-  const decemberDeadlines =
-    decemberContest && decemberSchool
-      ? await prisma.deadline.findMany({ where: { contestId: decemberContest.id, schoolId: decemberSchool.id } })
-      : [];
-
-  if (decemberContest && decemberSchool) {
-    const decCandidature =
+  if (mastersContest) {
+    const diplomaName = 'MSc Data';
+    const diplomeCandidature =
       (await prisma.candidature.findFirst({
-        where: { userId: demoUser.id, contestId: decemberContest.id, schoolId: decemberSchool.id },
+        where: { userId: demoUser.id, contestId: mastersContest.id, diplomaName, type: CandidatureType.diplome },
       })) ||
       (await prisma.candidature.create({
         data: {
           userId: demoUser.id,
-          contestId: decemberContest.id,
-          schoolId: decemberSchool.id,
+          contestId: mastersContest.id,
+          type: CandidatureType.diplome,
+          diplomaName,
           status: 'draft',
         },
       }));
 
-    for (const dl of decemberDeadlines) {
+    const dataDeadlines = await prisma.deadline.findMany({
+      where: { contestId: mastersContest.id, diplomaName },
+    });
+
+    for (const dl of dataDeadlines) {
       await prisma.task.upsert({
-        where: { id: `${decCandidature.id}-${dl.id}` },
+        where: { id: `${diplomeCandidature.id}-${dl.id}` },
         update: {},
         create: {
-          id: `${decCandidature.id}-${dl.id}`,
+          id: `${diplomeCandidature.id}-${dl.id}`,
           title: dl.title,
           status: TaskStatus.todo,
-          candidatureId: decCandidature.id,
+          candidatureId: diplomeCandidature.id,
           deadlineId: dl.id,
+        },
+      });
+
+      await prisma.reminder.upsert({
+        where: { id: `${demoUser.id}-${dl.id}-email` },
+        update: {},
+        create: {
+          id: `${demoUser.id}-${dl.id}-email`,
+          userId: demoUser.id,
+          deadlineId: dl.id,
+          channel: ReminderChannel.email,
+          sendAt: new Date(new Date(dl.dueAt).getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(),
         },
       });
     }

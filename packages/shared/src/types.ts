@@ -24,6 +24,11 @@ export enum ReminderStatus {
   Error = 'error',
 }
 
+export enum CandidatureType {
+  Concours = 'concours',
+  Diplome = 'diplome',
+}
+
 export enum DeadlineType {
   Registration = 'registration',
   Test = 'test',
@@ -37,8 +42,10 @@ export interface Deadline {
   title: string;
   type: DeadlineType;
   dueAt: string;
+  sessionLabel: string;
   contestId: string;
   schoolId?: string;
+  diplomaName?: string;
   createdByAdmin: boolean;
 }
 
@@ -86,6 +93,9 @@ export interface Candidature {
   userId: string;
   contestId: string;
   schoolId?: string;
+  diplomaName?: string;
+  sessionLabel: string;
+  type: CandidatureType;
   status: 'draft' | 'submitted';
 }
 

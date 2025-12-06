@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { DeadlineType, ReminderChannel, TaskStatus, UserRole } from './types';
+import { CandidatureType, DeadlineType, ReminderChannel, TaskStatus, UserRole } from './types';
 
 export const userSchema = z.object({
   id: z.string(),
@@ -15,8 +15,10 @@ export const deadlineSchema = z.object({
   title: z.string().min(1),
   type: z.nativeEnum(DeadlineType),
   dueAt: z.string().datetime(),
+  sessionLabel: z.string().min(1),
   contestId: z.string(),
   schoolId: z.string().optional(),
+  diplomaName: z.string().optional(),
   createdByAdmin: z.boolean(),
 });
 
@@ -45,6 +47,9 @@ export const candidatureSchema = z.object({
   userId: z.string(),
   contestId: z.string(),
   schoolId: z.string().optional(),
+  diplomaName: z.string().optional(),
+  sessionLabel: z.string().min(1),
+  type: z.nativeEnum(CandidatureType),
   status: z.enum(['draft', 'submitted']),
 });
 

@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma.service';
 interface DeadlineFilter {
   contestId?: string;
   schoolId?: string;
+  diplomaName?: string;
 }
 
 @Injectable()
@@ -27,6 +28,7 @@ export class CatalogService {
       where: {
         contestId: filter.contestId,
         schoolId: filter.schoolId,
+        diplomaName: filter.diplomaName,
       },
       orderBy: { dueAt: 'asc' },
     });

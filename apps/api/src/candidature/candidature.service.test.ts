@@ -1,4 +1,4 @@
-import { TaskStatus as PrismaTaskStatus } from '@prisma/client';
+import { CandidatureType as PrismaCandidatureType, TaskStatus as PrismaTaskStatus } from '@prisma/client';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import { PrismaService } from '../prisma.service';
@@ -26,13 +26,19 @@ class MockPrisma {
   };
 }
 
+class MockGoogle {
+  syncDeadlinesToCalendar = vi.fn();
+}
+
 describe('CandidatureService syncDeadlines', () => {
   let prisma: MockPrisma;
+  let google: MockGoogle;
   let service: CandidatureService;
 
   beforeEach(() => {
     prisma = new MockPrisma();
-    service = new CandidatureService(prisma as unknown as PrismaService);
+    google = new MockGoogle();
+    service = new CandidatureService(prisma as unknown as PrismaService, google as unknown as any);
   });
 
   it('creates tasks for missing deadlines', async () => {
@@ -41,6 +47,7 @@ describe('CandidatureService syncDeadlines', () => {
       userId: 'user1',
       contestId: 'contest1',
       schoolId: 'school1',
+      type: PrismaCandidatureType.concours,
     });
     prisma.deadline.findMany.mockResolvedValue([
       {
@@ -76,12 +83,25 @@ describe('CandidatureService syncDeadlines', () => {
     expect(prisma.reminder.createMany).toHaveBeenCalled();
   });
 
+  it('rejects concours with school', async () => {
+    await expect(
+      service.create('user1', { contestId: 'contest1', schoolId: 'school1', type: PrismaCandidatureType.concours }),
+    ).rejects.toThrow('école');
+  });
+
+  it('requires diploma name for type diplome', async () => {
+    await expect(service.create('user1', { contestId: 'contest1', type: PrismaCandidatureType.diplome })).rejects.toThrow(
+      'diplôme',
+    );
+  });
+
   it('creates none when all deadlines already have tasks', async () => {
     prisma.candidature.findUnique.mockResolvedValue({
       id: 'cand1',
       userId: 'user1',
       contestId: 'contest1',
       schoolId: null,
+      type: PrismaCandidatureType.concours,
     });
     prisma.deadline.findMany.mockResolvedValue([
       { id: 'd1', title: 'Inscription', dueAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000) },
@@ -97,11 +117,13 @@ describe('CandidatureService syncDeadlines', () => {
 
 describe('CandidatureService suggestions and status', () => {
   let prisma: MockPrisma;
+  let google: MockGoogle;
   let service: CandidatureService;
 
   beforeEach(() => {
     prisma = new MockPrisma();
-    service = new CandidatureService(prisma as unknown as PrismaService);
+    google = new MockGoogle();
+    service = new CandidatureService(prisma as unknown as PrismaService, google as unknown as any);
   });
 
   it('adds suggestions to tasks in listForUser', async () => {
@@ -111,6 +133,7 @@ describe('CandidatureService suggestions and status', () => {
         userId: 'user1',
         contest: { name: 'Contest', year: 2025 },
         school: null,
+        type: PrismaCandidatureType.concours,
         tasks: [
           {
             id: 't1',

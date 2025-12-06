@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 
+import { PrismaService } from '../prisma.service';
+
 import { GoogleService } from './google.service';
 
 const patchMock = vi.fn();
@@ -64,7 +66,7 @@ describe('GoogleService', () => {
     process.env.GOOGLE_REDIRECT_URI = 'http://localhost/google/callback';
     prisma = new PrismaMock();
     vi.clearAllMocks();
-    service = new GoogleService(prisma as unknown as any);
+    service = new GoogleService(prisma as unknown as PrismaService);
   });
 
   afterEach(() => {

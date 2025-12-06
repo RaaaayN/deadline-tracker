@@ -1,5 +1,7 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsEnum, IsOptional, IsString, ValidateNested } from 'class-validator';
+
+import { CandidatureType } from '@prisma/client';
 
 class InitialTaskDto {
   @IsString()
@@ -11,12 +13,22 @@ class InitialTaskDto {
 }
 
 export class CreateCandidatureDto {
+  @IsEnum(CandidatureType)
+  type!: CandidatureType;
+
   @IsString()
   contestId!: string;
 
   @IsOptional()
   @IsString()
   schoolId?: string;
+
+  @IsString()
+  sessionLabel!: string;
+
+  @IsOptional()
+  @IsString()
+  diplomaName?: string;
 
   @IsOptional()
   @IsArray()

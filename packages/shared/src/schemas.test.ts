@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { deadlineSchema, taskSchema } from './schemas';
+import { candidatureSchema, deadlineSchema, taskSchema } from './schemas';
 
 describe('schemas', () => {
   it('validates deadline', () => {
@@ -24,6 +24,17 @@ describe('schemas', () => {
         candidatureId: 'cand',
       });
     expect(invalid).toThrowError();
+  });
+
+  it('validates candidature type', () => {
+    const parsed = candidatureSchema.parse({
+      id: 'cand1',
+      userId: 'user1',
+      contestId: 'c1',
+      type: 'concours',
+      status: 'draft',
+    });
+    expect(parsed.type).toBe('concours');
   });
 });
 

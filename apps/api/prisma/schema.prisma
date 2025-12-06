@@ -47,6 +47,11 @@ enum DocumentStatus {
   validated
 }
 
+enum CandidatureType {
+  concours
+  diplome
+}
+
 model User {
   id           String        @id @default(cuid())
   email        String        @unique
@@ -91,6 +96,8 @@ model Deadline {
   title       String
   type        DeadlineType
   dueAt       DateTime
+  sessionLabel String      @default("Session unique")
+  diplomaName String?
   contest     Contest      @relation(fields: [contestId], references: [id], onDelete: Cascade)
   contestId   String
   school      School?      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -111,6 +118,9 @@ model Candidature {
   contestId  String
   school     School?   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   schoolId   String?
+  type       CandidatureType @default(concours)
+  diplomaName String?
+  sessionLabel String   @default("Session unique")
   status     String    @default("draft")
   tasks      Task[]
   documents  Document[]
