@@ -72,6 +72,17 @@ enum ProgramFormat {
   hybrid
 }
 
+enum TestType {
+  gmat
+  tage_mage
+  gre
+  toeic
+  toefl
+  ielts
+  sat
+  other
+}
+
 model User {
   id           String        @id @default(cuid())
   email        String        @unique
@@ -96,7 +107,14 @@ model Contest {
   feesCents    Int?
   currency     String        @default("EUR")
   contacts     String?
+  registrationUrl String?
+  languages    String[]      @default([])
+  examLocations String[]     @default([])
+  durationMinutes Int?
+  scoreScale   String?
+  maxAttempts  Int?
   deadlines    Deadline[]
+  testRequirements ContestTestRequirement[]
   schools      School[]
   programs     Program[]
   candidatures Candidature[]
@@ -105,11 +123,28 @@ model Contest {
   @@unique([name, year], map: "name_year")
 }
 
+model ContestTestRequirement {
+  id              String   @id @default(cuid())
+  test            TestType
+  minimumScore    Float?
+  recommendedScore Float?
+  weightPercent   Int?
+  validityMonths  Int?
+  sections        String[] @default([])
+  notes           String?
+  registrationUrl String?
+  contest         Contest  @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  contestId       String
+  createdAt       DateTime @default(now())
+
+  @@index([contestId, test])
+}
+
 model School {
   id           String        @id @default(cuid())
   name         String
-  contest      Contest       @relation(fields: [contestId], references: [id], onDelete: Cascade)
-  contestId    String
+  contest      Contest?      @relation(fields: [contestId], references: [id], onDelete: SetNull)
+  contestId    String?
   description  String?
   website      String?
   city         String?

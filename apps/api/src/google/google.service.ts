@@ -90,6 +90,42 @@ export class GoogleService {
     return { synced };
   }
 
+  /**
+   * Delete all events created by DossierTracker (extendedProperties.private.source = dossiertracker)
+   * from the user's dedicated calendar.
+   */
+  async purgeDossierTrackerEvents(userId: string): Promise<{ deleted: number }> {
+    const { calendar } = await this.getCalendarClient(userId);
+    const calendarId = await this.ensureCalendar(userId, calendar);
+
+    let pageToken: string | undefined;
+    let deleted = 0;
+
+    do {
+      const { data } = await calendar.events.list({
+        calendarId,
+        maxResults: 50,
+        pageToken,
+        privateExtendedProperty: 'source=dossiertracker',
+      });
+      const events = data.items ?? [];
+      pageToken = data.nextPageToken ?? undefined;
+
+      for (const event of events) {
+        if (!event.id) continue;
+        try {
+          await calendar.events.delete({ calendarId, eventId: event.id });
+          deleted += 1;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'Calendar delete error';
+          this.logger.warn(`Failed to delete calendar event ${event.id}: ${message}`);
+        }
+      }
+    } while (pageToken);
+
+    return { deleted };
+  }
+
   async sendEmail(userId: string, to: string, subject: string, text: string): Promise<void> {
     const { gmail } = await this.getGmailClient(userId);
     const raw = this.buildRawEmail(to, subject, text);

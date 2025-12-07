@@ -49,6 +49,17 @@ export enum ProgramFormat {
   Hybrid = 'hybrid',
 }
 
+export enum TestType {
+  Gmat = 'gmat',
+  TageMage = 'tage_mage',
+  Gre = 'gre',
+  Toeic = 'toeic',
+  Toefl = 'toefl',
+  Ielts = 'ielts',
+  Sat = 'sat',
+  Other = 'other',
+}
+
 export enum DeadlineType {
   Registration = 'registration',
   Test = 'test',
@@ -105,6 +116,26 @@ export interface Contest {
   examFormat?: string;
   feesCents?: number;
   currency?: string;
+  registrationUrl?: string;
+  languages: string[];
+  examLocations: string[];
+  durationMinutes?: number;
+  scoreScale?: string;
+  maxAttempts?: number;
+  testRequirements?: ContestTestRequirement[];
+  deadlines?: Deadline[];
+}
+
+export interface ContestTestRequirement {
+  id: string;
+  test: TestType;
+  minimumScore?: number;
+  recommendedScore?: number;
+  weightPercent?: number;
+  validityMonths?: number;
+  sections: string[];
+  notes?: string;
+  registrationUrl?: string;
 }
 
 export interface School {

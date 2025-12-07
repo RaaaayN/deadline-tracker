@@ -1,4 +1,5 @@
 import { Controller, Get, NotFoundException, Param, Query } from '@nestjs/common';
+import { TestType } from '@prisma/client';
 
 import { CatalogService } from './catalog.service';
 
@@ -7,8 +8,9 @@ export class CatalogController {
   constructor(private readonly catalogService: CatalogService) {}
 
   @Get('contests')
-  getContests() {
-    return this.catalogService.listContests();
+  getContests(@Query('year') year?: string) {
+    const parsedYear = year ? Number.parseInt(year, 10) : undefined;
+    return this.catalogService.listContests({ year: Number.isNaN(parsedYear) ? undefined : parsedYear });
   }
 
   @Get('schools')

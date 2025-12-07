@@ -105,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await login({ email, password });
       persistToken(res.accessToken);
       await refreshSession();
-      router.push(redirectTo);
+      router.push(redirectTo as '/dashboard');
     },
     [persistToken, refreshSession, router],
   );
@@ -115,7 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await signup(payload);
       persistToken(res.accessToken);
       await refreshSession();
-      router.push(redirectTo);
+      router.push(redirectTo as '/dashboard');
     },
     [persistToken, refreshSession, router],
   );

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import React from 'react';
 
-import { Navigation } from '../components/Navigation';
+import { Sidebar } from '../components/Sidebar';
 
 import { AuthProvider } from './providers/AuthProvider';
 
@@ -12,16 +12,23 @@ export const metadata: Metadata = {
   description: 'Centralise les deadlines AST et vos checklists',
 };
 
+/**
+ * Root layout with sidebar navigation.
+ * The sidebar is hidden on landing page for non-authenticated users.
+ */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr">
-      <body className="app-body">
+      <body>
         <AuthProvider>
-          <Navigation />
-          <div className="page-shell">{children}</div>
+          <div className="app-layout">
+            <Sidebar />
+            <main className="app-main">
+              {children}
+            </main>
+          </div>
         </AuthProvider>
       </body>
     </html>
   );
 }
-

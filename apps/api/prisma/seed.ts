@@ -5,14 +5,96 @@ import {
   ProgramType,
   ReminderChannel,
   TaskStatus,
+  TestType,
   PrismaClient,
 } from '@prisma/client';
 import { hash } from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+type SeedDeadline = {
+  title: string;
+  type: DeadlineType;
+  dueAt: string;
+  sessionLabel?: string;
+  diplomaName?: string;
+};
+
+type SeedTestRequirement = {
+  test: TestType;
+  minimumScore?: number;
+  recommendedScore?: number;
+  weightPercent?: number;
+  validityMonths?: number;
+  sections?: string[];
+  notes?: string;
+  registrationUrl?: string;
+};
+
+type SeedProgram = {
+  name: string;
+  slug: string;
+  type: ProgramType;
+  domain: string;
+  description: string;
+  objectives?: string;
+  outcomes?: string[];
+  durationMonths?: number;
+  ects?: number;
+  format: ProgramFormat;
+  campuses?: string[];
+  languages?: string[];
+  startPeriods?: string[];
+  tuitionCents?: number;
+  applicationFeeCents?: number;
+  currency?: string;
+  financing?: string;
+  admissionPrerequisites?: string[];
+  admissionTests?: string[];
+  admissionDocuments?: string[];
+  admissionProcess?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  website?: string;
+  deadlines?: SeedDeadline[];
+  courses?: { title: string; category?: string; description?: string }[];
+  careers?: { title: string; description?: string }[];
+};
+
+type SeedSchool = {
+  name: string;
+  description?: string;
+  website?: string;
+  city?: string;
+  country?: string;
+  campuses?: string[];
+  contactEmail?: string;
+  contactPhone?: string;
+  tuitionCents?: number;
+  programs?: SeedProgram[];
+};
+
+type SeedContest = {
+  name: string;
+  year: number;
+  url?: string;
+  description?: string;
+  examFormat?: string;
+  feesCents?: number;
+  currency?: string;
+  registrationUrl?: string;
+  languages?: string[];
+  examLocations?: string[];
+  durationMinutes?: number;
+  scoreScale?: string;
+  maxAttempts?: number;
+  tests?: SeedTestRequirement[];
+  contestDeadlines?: SeedDeadline[];
+  schools: SeedSchool[];
+};
+
 async function main() {
-  const contests = [
+  const contests: SeedContest[] = [
     {
       name: 'Masters Sélectifs 2026',
       year: 2026,
@@ -21,6 +103,49 @@ async function main() {
       examFormat: 'Dossier + test + oral',
       feesCents: 0,
       currency: 'EUR',
+      registrationUrl: 'https://masters2026.example.com/register',
+      languages: ['French', 'English'],
+      examLocations: ['Paris', 'Lyon', 'Bordeaux'],
+      durationMinutes: 180,
+      scoreScale: 'Tests pondérés 60% écrit / 40% oral',
+      maxAttempts: 3,
+      tests: [
+        {
+          test: TestType.gmat,
+          minimumScore: 600,
+          recommendedScore: 680,
+          weightPercent: 40,
+          validityMonths: 60,
+          sections: ['Quant', 'Verbal'],
+          notes: 'Score équilibré, IR non requis',
+        },
+        {
+          test: TestType.tage_mage,
+          minimumScore: 300,
+          recommendedScore: 350,
+          weightPercent: 35,
+          validityMonths: 24,
+          sections: ['Compréhension', 'Logique', 'Calcul'],
+        },
+        {
+          test: TestType.toefl,
+          minimumScore: 95,
+          recommendedScore: 100,
+          weightPercent: 15,
+          validityMonths: 24,
+          sections: ['Reading', 'Listening', 'Speaking', 'Writing'],
+          notes: 'Exemption possible pour parcours anglophone',
+        },
+        {
+          test: TestType.toeic,
+          minimumScore: 900,
+          recommendedScore: 940,
+          weightPercent: 10,
+          validityMonths: 24,
+          sections: ['Listening', 'Reading'],
+          notes: 'Accepté si pas de TOEFL/IELTS',
+        },
+      ],
       contestDeadlines: [],
       schools: [
         {
@@ -331,6 +456,22 @@ async function main() {
       examFormat: 'Test adaptatif en ligne',
       feesCents: 22000,
       currency: 'EUR',
+      registrationUrl: 'https://www.ets.org/gre/register',
+      languages: ['English'],
+      examLocations: ['Online', 'Prometric centers'],
+      durationMinutes: 115,
+      scoreScale: '170 Quant / 170 Verbal / 6 AW',
+      maxAttempts: 5,
+      tests: [
+        {
+          test: TestType.gre,
+          minimumScore: 300,
+          recommendedScore: 320,
+          validityMonths: 60,
+          sections: ['Quantitative', 'Verbal', 'Analytical Writing'],
+          registrationUrl: 'https://www.ets.org/gre/register',
+        },
+      ],
       contestDeadlines: [
         { title: 'Session Février - Clôture', type: DeadlineType.registration, dueAt: '2026-01-31T23:59:00Z', sessionLabel: 'GRE Février 2026' },
         { title: 'Session Mai - Clôture', type: DeadlineType.registration, dueAt: '2026-04-15T23:59:00Z', sessionLabel: 'GRE Mai 2026' },
@@ -346,6 +487,22 @@ async function main() {
       examFormat: 'Test en ligne surveillé',
       feesCents: 24500,
       currency: 'EUR',
+      registrationUrl: 'https://www.ets.org/toefl/register',
+      languages: ['English'],
+      examLocations: ['Online', 'Test centers'],
+      durationMinutes: 115,
+      scoreScale: '120 total',
+      maxAttempts: 5,
+      tests: [
+        {
+          test: TestType.toefl,
+          minimumScore: 90,
+          recommendedScore: 100,
+          validityMonths: 24,
+          sections: ['Reading', 'Listening', 'Speaking', 'Writing'],
+          registrationUrl: 'https://www.ets.org/toefl/register',
+        },
+      ],
       contestDeadlines: [
         { title: 'Session Mars - Clôture', type: DeadlineType.registration, dueAt: '2026-02-28T23:59:00Z', sessionLabel: 'TOEFL Mars 2026' },
         { title: 'Session Juin - Clôture', type: DeadlineType.registration, dueAt: '2026-05-20T23:59:00Z', sessionLabel: 'TOEFL Juin 2026' },
@@ -361,6 +518,23 @@ async function main() {
       examFormat: 'Paper ou computer-based',
       feesCents: 23000,
       currency: 'EUR',
+      registrationUrl: 'https://ieltsregistration.org/',
+      languages: ['English'],
+      examLocations: ['Paris', 'Lyon', 'Online (UKVI)'],
+      durationMinutes: 165,
+      scoreScale: '9.0 bands',
+      maxAttempts: 6,
+      tests: [
+        {
+          test: TestType.ielts,
+          minimumScore: 6.5,
+          recommendedScore: 7.0,
+          weightPercent: 100,
+          validityMonths: 24,
+          sections: ['Listening', 'Reading', 'Writing', 'Speaking'],
+          registrationUrl: 'https://ieltsregistration.org/',
+        },
+      ],
       contestDeadlines: [
         { title: 'Session Avril - Clôture', type: DeadlineType.registration, dueAt: '2026-03-25T23:59:00Z', sessionLabel: 'IELTS Avril 2026' },
         { title: 'Session Juillet - Clôture', type: DeadlineType.registration, dueAt: '2026-06-10T23:59:00Z', sessionLabel: 'IELTS Juillet 2026' },
@@ -376,6 +550,23 @@ async function main() {
       examFormat: 'Test papier',
       feesCents: 14000,
       currency: 'EUR',
+      registrationUrl: 'https://www.ets.org/toeic/test-takers',
+      languages: ['English'],
+      examLocations: ['France'],
+      durationMinutes: 120,
+      scoreScale: '990 total',
+      maxAttempts: 6,
+      tests: [
+        {
+          test: TestType.toeic,
+          minimumScore: 850,
+          recommendedScore: 900,
+          weightPercent: 100,
+          validityMonths: 24,
+          sections: ['Listening', 'Reading'],
+          registrationUrl: 'https://www.ets.org/toeic/test-takers',
+        },
+      ],
       contestDeadlines: [
         { title: 'Session Février - Clôture', type: DeadlineType.registration, dueAt: '2026-01-20T23:59:00Z', sessionLabel: 'TOEIC Février 2026' },
         { title: 'Session Mai - Clôture', type: DeadlineType.registration, dueAt: '2026-04-20T23:59:00Z', sessionLabel: 'TOEIC Mai 2026' },
@@ -391,6 +582,23 @@ async function main() {
       examFormat: 'Test papier',
       feesCents: 6590,
       currency: 'EUR',
+      registrationUrl: 'https://www.tagemage.fr/inscription',
+      languages: ['French'],
+      examLocations: ['Paris', 'Lille', 'Lyon', 'Bordeaux'],
+      durationMinutes: 150,
+      scoreScale: '600 points',
+      maxAttempts: 2,
+      tests: [
+        {
+          test: TestType.tage_mage,
+          minimumScore: 300,
+          recommendedScore: 360,
+          weightPercent: 100,
+          validityMonths: 24,
+          sections: ['Compréhension', 'Calcul', 'Logique', 'Expression'],
+          registrationUrl: 'https://www.tagemage.fr/inscription',
+        },
+      ],
       contestDeadlines: [
         { title: 'Session Mars - Clôture', type: DeadlineType.registration, dueAt: '2026-02-18T23:59:00Z', sessionLabel: 'TAGE MAGE Mars 2026' },
         { title: 'Session Juin - Clôture', type: DeadlineType.registration, dueAt: '2026-05-25T23:59:00Z', sessionLabel: 'TAGE MAGE Juin 2026' },
@@ -428,6 +636,12 @@ async function main() {
         examFormat: contest.examFormat,
         feesCents: contest.feesCents,
         currency: contest.currency,
+        registrationUrl: contest.registrationUrl,
+        languages: contest.languages ?? [],
+        examLocations: contest.examLocations ?? [],
+        durationMinutes: contest.durationMinutes,
+        scoreScale: contest.scoreScale,
+        maxAttempts: contest.maxAttempts,
       },
     });
     contestByNameYear[`${contest.name}-${contest.year}`] = createdContest.id;
@@ -446,6 +660,22 @@ async function main() {
           sessionLabel: dl.sessionLabel,
         })),
         skipDuplicates: true,
+      });
+    }
+
+    if (contest.tests?.length) {
+      await prisma.contestTestRequirement.createMany({
+        data: contest.tests.map((test) => ({
+          test: test.test,
+          minimumScore: test.minimumScore,
+          recommendedScore: test.recommendedScore,
+          weightPercent: test.weightPercent,
+          validityMonths: test.validityMonths,
+          sections: test.sections ?? [],
+          notes: test.notes,
+          registrationUrl: test.registrationUrl,
+          contestId: createdContest.id,
+        })),
       });
     }
 

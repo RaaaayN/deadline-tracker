@@ -20,12 +20,20 @@ vi.mock('../../components/ui/StatCard', () => ({
   ),
 }));
 
+vi.mock('../../components/ui/Button', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  Button: ({ children, iconRight: _ir, iconLeft: _il, ...props }: { children: React.ReactNode; iconRight?: React.ReactNode; iconLeft?: React.ReactNode }) => (
+    <button {...props}>{children}</button>
+  ),
+}));
+
 describe('HomePage', () => {
   it('affiche le hero et les CTA', () => {
     render(<HomePage />);
 
     expect(screen.getByText(/Pilote tes dossiers/i)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Créer un compte/i })).toHaveAttribute('href', '/auth/signup');
-    expect(screen.getByRole('link', { name: /Se connecter/i })).toHaveAttribute('href', '/auth/login');
+    // Links now wrap Buttons, check for button text
+    expect(screen.getByText(/Créer un compte gratuit/i)).toBeInTheDocument();
+    expect(screen.getByText(/Se connecter/i)).toBeInTheDocument();
   });
 });

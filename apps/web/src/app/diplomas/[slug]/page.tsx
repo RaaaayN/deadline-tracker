@@ -1,11 +1,26 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-
 import { Program } from '@dossiertracker/shared';
+import { motion } from 'framer-motion';
+import {
+  ArrowLeft,
+  ExternalLink,
+  Clock,
+  CreditCard,
+  Globe,
+  MapPin,
+  Award,
+  BookOpen,
+  Briefcase,
+  Calendar,
+  FileText,
+  Target,
+} from 'lucide-react';
+import Link from 'next/link';
+import React, { useEffect, useState } from 'react';
 
 import { Banner } from '../../../components/ui/Banner';
+import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { Loading } from '../../../components/ui/Loading';
@@ -29,9 +44,25 @@ function formatDuration(months?: number | null) {
   if (months < 12) return `${months} mois`;
   const years = Math.floor(months / 12);
   const remaining = months % 12;
-  return remaining > 0 ? `${years} an(s) ${remaining} mois` : `${years} an(s)`;
+  return remaining > 0 ? `${years} an${years > 1 ? 's' : ''} ${remaining} mois` : `${years} an${years > 1 ? 's' : ''}`;
 }
 
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 },
+  },
+};
+
+const item = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 },
+};
+
+/**
+ * Diploma detail page with full program information.
+ */
 export default function DiplomaDetailPage({ params }: Props) {
   const [program, setProgram] = useState<Program | null>(null);
   const [loading, setLoading] = useState(true);
@@ -55,23 +86,30 @@ export default function DiplomaDetailPage({ params }: Props) {
 
   if (loading) {
     return (
-      <main className="app-shell">
-        <Card title="Chargement" description="">
-          <Loading />
+      <div className="app-content">
+        <Card>
+          <Loading label="Chargement du programme..." />
         </Card>
-      </main>
+      </div>
     );
   }
 
   if (error || !program) {
     return (
-      <main className="app-shell">
+      <div className="app-content">
         <Banner tone="error" message={error ?? 'Diplôme introuvable.'} ariaLive="assertive" />
-        <EmptyState title="Diplôme introuvable" description="Retour au catalogue des diplômes." />
-        <Link href="/diplomas" className="btn btn-primary">
-          Retour au catalogue
-        </Link>
-      </main>
+        <Card style={{ marginTop: 'var(--space-4)' }}>
+          <EmptyState
+            title="Diplôme introuvable"
+            description="Ce programme n'existe pas ou a été supprimé."
+            action={
+              <Link href="/diplomas">
+                <Button iconLeft={<ArrowLeft size={18} />}>Retour au catalogue</Button>
+              </Link>
+            }
+          />
+        </Card>
+      </div>
     );
   }
 
@@ -79,155 +117,273 @@ export default function DiplomaDetailPage({ params }: Props) {
   const bestRanking = topEntry?.leaderboard;
 
   return (
-    <main className="app-shell">
-      <section className="card hero stack">
-        <div className="stack">
-          <span className="badge">{program.domain}</span>
-          <div className="flex space-between items-start">
+    <div className="app-content">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        style={{ marginBottom: 'var(--space-4)' }}
+      >
+        <Link href="/diplomas" className="flex items-center gap-2 text-muted" style={{ marginBottom: 'var(--space-4)' }}>
+          <ArrowLeft size={18} />
+          <span>Retour au catalogue</span>
+        </Link>
+      </motion.div>
+
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="hero"
+        style={{ marginBottom: 'var(--space-8)' }}
+      >
+        <div className="stack-md">
+          <div className="flex items-start justify-between gap-4">
             <div className="stack-sm">
-              <h1 className="section-title">{program.name}</h1>
-              <p className="muted">
-                {program.school?.name} · {program.campuses?.join(', ') || 'Campus à préciser'} · {program.languages?.join(', ') || 'Langue à préciser'}
+              <div className="flex items-center gap-2">
+                <span className="badge primary">{program.domain}</span>
+                <span className="badge">{program.format.replace(/_/g, ' ')}</span>
+              </div>
+              <h1 style={{ fontSize: 'var(--text-3xl)', marginTop: 'var(--space-2)' }}>{program.name}</h1>
+              <p className="text-secondary" style={{ fontSize: 'var(--text-lg)' }}>
+                {program.school?.name}
               </p>
             </div>
-            {bestRanking ? (
-              <span className="badge success">
-                {bestRanking.source} #{topEntry?.rank ?? '—'} ({bestRanking.year})
-              </span>
-            ) : null}
+            {bestRanking && (
+              <div className="badge success" style={{ padding: 'var(--space-2) var(--space-3)' }}>
+                <Award size={16} />
+                #{topEntry?.rank} {bestRanking.source} ({bestRanking.year})
+              </div>
+            )}
           </div>
-          <p className="muted">{program.description}</p>
-          <div className="cta-group">
-            {program.website ? (
-              <a href={program.website} target="_blank" rel="noreferrer" className="btn btn-primary">
-                Site du programme
+
+          <p className="text-secondary">{program.description}</p>
+
+          <div className="flex flex-wrap gap-3">
+            {program.website && (
+              <a href={program.website} target="_blank" rel="noreferrer">
+                <Button iconRight={<ExternalLink size={16} />}>Site du programme</Button>
               </a>
-            ) : null}
-            <Link href="/diplomas" className="btn btn-ghost">
-              Retour catalogue
-            </Link>
+            )}
           </div>
         </div>
-      </section>
+      </motion.section>
 
-      <section className="grid-3">
-        <Card title="Format" description="Durée, rythme et langue.">
-          <ul className="bullet-list">
-            <li>Format : {program.format.replace(/_/g, ' ')}</li>
-            <li>Durée : {formatDuration(program.durationMonths)}</li>
-            <li>ECTS : {program.ects ?? '—'}</li>
-            <li>Langues : {program.languages?.join(', ') || '—'}</li>
-            <li>Campus : {program.campuses?.join(', ') || '—'}</li>
-          </ul>
-        </Card>
-        <Card title="Admissions" description="Prérequis, tests et documents.">
-          <ul className="bullet-list">
-            <li>Prérequis : {program.admissionPrerequisites?.join(', ') || '—'}</li>
-            <li>Tests : {program.admissionTests?.join(', ') || '—'}</li>
-            <li>Documents : {program.admissionDocuments?.join(', ') || '—'}</li>
-            <li>Process : {program.admissionProcess ?? '—'}</li>
-          </ul>
-        </Card>
-        <Card title="Frais & financement" description="Montants et aides.">
-          <ul className="bullet-list">
-            <li>Frais de scolarité : {formatCurrency(program.tuitionCents, program.currency)}</li>
-            <li>Frais de dossier : {formatCurrency(program.applicationFeeCents, program.currency)}</li>
-            <li>Financement : {program.financing ?? '—'}</li>
-          </ul>
-        </Card>
-      </section>
-
-      <section className="grid-2">
-        <Card title="Objectifs" description="Ce que vous saurez faire.">
-          <p className="muted">{program.objectives ?? 'Objectifs à venir.'}</p>
-          {program.outcomes?.length ? (
-            <ul className="bullet-list">
-              {program.outcomes.map((outcome) => (
-                <li key={outcome}>{outcome}</li>
-              ))}
-            </ul>
-          ) : null}
-        </Card>
-        <Card title="Débouchés" description="Rôles visés.">
-          {program.careers?.length ? (
-            <ul className="bullet-list">
-              {program.careers.map((career) => (
-                <li key={career.id}>
-                  <strong>{career.title}</strong> — <span className="muted">{career.description ?? ''}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="muted">Débouchés en cours de collecte.</p>
-          )}
-        </Card>
-      </section>
-
-      <section className="grid-2">
-        <Card title="Cours" description="Aperçu des modules principaux.">
-          {program.courses?.length ? (
-            <ul className="bullet-list">
-              {program.courses.map((course) => (
-                <li key={course.id}>
-                  <strong>{course.title}</strong>
-                  {course.category ? <span className="subtle"> ({course.category})</span> : null} —{' '}
-                  <span className="muted">{course.description ?? 'Description à venir.'}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="muted">Modules en cours de collecte.</p>
-          )}
-        </Card>
-        <Card title="Classements" description="Sources, rangs et scores.">
-          {program.leaderboardEntries?.length ? (
-            <ul className="bullet-list">
-              {program.leaderboardEntries.map((entry) => (
-                <li key={entry.id}>
-                  <span className="strong">
-                    {entry.leaderboard?.source ?? 'Classement'} {entry.leaderboard?.category ? `· ${entry.leaderboard?.category}` : ''}
-                  </span>
-                  <span className="muted">
-                    {' '}
-                    — {entry.leaderboard?.year ?? ''} {entry.rank ? `· #${entry.rank}` : ''}{' '}
-                    {entry.score ? `· Score ${entry.score}` : ''}
-                  </span>
-                  {entry.leaderboard?.url ? (
-                    <a href={entry.leaderboard.url} target="_blank" rel="noreferrer" className="btn btn-link">
-                      Voir
-                    </a>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="muted">Aucun classement renseigné pour l’instant.</p>
-          )}
-        </Card>
-      </section>
-
-      <section className="card">
-        <h2 className="section-title">Deadlines</h2>
-        {program.deadlines?.length ? (
-          <div className="list">
-            {program.deadlines.map((dl) => (
-              <div key={dl.id} className="list-row">
-                <div className="stack-sm">
-                  <strong>{dl.title}</strong>
-                  <p className="subtle">
-                    {dl.sessionLabel} · {dl.type} · {formatDate(dl.dueAt)}
-                  </p>
-                </div>
-                <span className="badge">{dl.type}</span>
-              </div>
-            ))}
+      {/* Quick Stats */}
+      <motion.div
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="grid grid-4"
+        style={{ marginBottom: 'var(--space-8)' }}
+      >
+        <motion.div variants={item} className="stat-card">
+          <div className="stat-card-header">
+            <div className="stat-card-icon primary"><Clock size={20} /></div>
           </div>
-        ) : (
-          <EmptyState title="Aucune échéance" description="Les dates seront ajoutées prochainement." />
-        )}
-      </section>
-    </main>
+          <div className="stat-card-value" style={{ fontSize: 'var(--text-xl)' }}>
+            {formatDuration(program.durationMonths)}
+          </div>
+          <p className="stat-card-label">Durée</p>
+        </motion.div>
+
+        <motion.div variants={item} className="stat-card">
+          <div className="stat-card-header">
+            <div className="stat-card-icon warning"><CreditCard size={20} /></div>
+          </div>
+          <div className="stat-card-value" style={{ fontSize: 'var(--text-xl)' }}>
+            {formatCurrency(program.tuitionCents, program.currency)}
+          </div>
+          <p className="stat-card-label">Frais de scolarité</p>
+        </motion.div>
+
+        <motion.div variants={item} className="stat-card">
+          <div className="stat-card-header">
+            <div className="stat-card-icon success"><Globe size={20} /></div>
+          </div>
+          <div className="stat-card-value" style={{ fontSize: 'var(--text-xl)' }}>
+            {program.languages?.join(', ') || '—'}
+          </div>
+          <p className="stat-card-label">Langues</p>
+        </motion.div>
+
+        <motion.div variants={item} className="stat-card">
+          <div className="stat-card-header">
+            <div className="stat-card-icon accent"><MapPin size={20} /></div>
+          </div>
+          <div className="stat-card-value" style={{ fontSize: 'var(--text-xl)' }}>
+            {program.campuses?.[0] || '—'}
+          </div>
+          <p className="stat-card-label">Campus principal</p>
+        </motion.div>
+      </motion.div>
+
+      {/* Details */}
+      <motion.div
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="grid grid-2"
+        style={{ marginBottom: 'var(--space-6)' }}
+      >
+        <motion.div variants={item}>
+          <Card title="Admissions" icon={<FileText size={20} />}>
+            <div className="list">
+              {program.admissionPrerequisites?.length ? (
+                <div className="list-item">
+                  <div className="list-item-content">
+                    <div className="list-item-title">Prérequis</div>
+                    <div className="list-item-subtitle">{program.admissionPrerequisites.join(', ')}</div>
+                  </div>
+                </div>
+              ) : null}
+              {program.admissionTests?.length ? (
+                <div className="list-item">
+                  <div className="list-item-content">
+                    <div className="list-item-title">Tests requis</div>
+                    <div className="list-item-subtitle">{program.admissionTests.join(', ')}</div>
+                  </div>
+                </div>
+              ) : null}
+              {program.admissionDocuments?.length ? (
+                <div className="list-item">
+                  <div className="list-item-content">
+                    <div className="list-item-title">Documents</div>
+                    <div className="list-item-subtitle">{program.admissionDocuments.join(', ')}</div>
+                  </div>
+                </div>
+              ) : null}
+              {program.admissionProcess && (
+                <div className="list-item">
+                  <div className="list-item-content">
+                    <div className="list-item-title">Processus</div>
+                    <div className="list-item-subtitle">{program.admissionProcess}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </Card>
+        </motion.div>
+
+        <motion.div variants={item}>
+          <Card title="Financement" icon={<CreditCard size={20} />}>
+            <div className="list">
+              <div className="list-item">
+                <div className="list-item-content">
+                  <div className="list-item-title">Frais de scolarité</div>
+                  <div className="list-item-subtitle">{formatCurrency(program.tuitionCents, program.currency)}</div>
+                </div>
+              </div>
+              <div className="list-item">
+                <div className="list-item-content">
+                  <div className="list-item-title">Frais de dossier</div>
+                  <div className="list-item-subtitle">{formatCurrency(program.applicationFeeCents, program.currency)}</div>
+                </div>
+              </div>
+              {program.financing && (
+                <div className="list-item">
+                  <div className="list-item-content">
+                    <div className="list-item-title">Options de financement</div>
+                    <div className="list-item-subtitle">{program.financing}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </Card>
+        </motion.div>
+      </motion.div>
+
+      <motion.div
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="grid grid-2"
+        style={{ marginBottom: 'var(--space-6)' }}
+      >
+        <motion.div variants={item}>
+          <Card title="Objectifs" icon={<Target size={20} />}>
+            <p className="text-secondary" style={{ marginBottom: 'var(--space-4)' }}>
+              {program.objectives ?? 'Objectifs à venir.'}
+            </p>
+            {program.outcomes?.length ? (
+              <div className="list">
+                {program.outcomes.map((outcome, i) => (
+                  <div key={i} className="list-item">
+                    <div className="list-item-content">
+                      <div className="list-item-title">{outcome}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </Card>
+        </motion.div>
+
+        <motion.div variants={item}>
+          <Card title="Débouchés" icon={<Briefcase size={20} />}>
+            {program.careers?.length ? (
+              <div className="list">
+                {program.careers.map((career) => (
+                  <div key={career.id} className="list-item">
+                    <div className="list-item-content">
+                      <div className="list-item-title">{career.title}</div>
+                      <div className="list-item-subtitle">{career.description}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted">Débouchés en cours de collecte.</p>
+            )}
+          </Card>
+        </motion.div>
+      </motion.div>
+
+      {/* Courses */}
+      <motion.div variants={item} style={{ marginBottom: 'var(--space-6)' }}>
+        <Card title="Cours & Modules" icon={<BookOpen size={20} />}>
+          {program.courses?.length ? (
+            <div className="list">
+              {program.courses.map((course) => (
+                <div key={course.id} className="list-item">
+                  <div className="list-item-content">
+                    <div className="list-item-title">{course.title}</div>
+                    <div className="list-item-subtitle">{course.description}</div>
+                  </div>
+                  {course.category && <span className="badge">{course.category}</span>}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState title="Modules en cours de collecte" description="Les cours seront ajoutés prochainement." />
+          )}
+        </Card>
+      </motion.div>
+
+      {/* Deadlines */}
+      <motion.div variants={item}>
+        <Card title="Échéances" icon={<Calendar size={20} />}>
+          {program.deadlines?.length ? (
+            <div className="list">
+              {program.deadlines.map((dl) => (
+                <div key={dl.id} className="list-item">
+                  <div className="list-item-content">
+                    <div className="list-item-title">{dl.title}</div>
+                    <div className="list-item-subtitle">
+                      {dl.sessionLabel} · {dl.type}
+                    </div>
+                  </div>
+                  <div className="list-item-actions">
+                    <span className="text-muted text-sm">{formatDate(dl.dueAt)}</span>
+                    <span className="badge">{dl.type}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState title="Aucune échéance" description="Les dates seront ajoutées prochainement." />
+          )}
+        </Card>
+      </motion.div>
+    </div>
   );
 }
-
-

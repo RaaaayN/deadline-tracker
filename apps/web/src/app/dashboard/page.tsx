@@ -1,6 +1,17 @@
 "use client";
 
-import type { Deadline, TaskStatus } from '@dossiertracker/shared';
+import type { Deadline } from '@dossiertracker/shared';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  ListTodo,
+  Clock,
+  CheckCircle2,
+  Calendar,
+  RefreshCw,
+  ChevronRight,
+  AlertCircle,
+} from 'lucide-react';
+import Link from 'next/link';
 import React, { useEffect, useMemo, useState } from 'react';
 
 import { Protected } from '../../components/Protected';
@@ -9,19 +20,35 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Loading } from '../../components/ui/Loading';
+import { PageHeader } from '../../components/ui/PageHeader';
 import { StatCard } from '../../components/ui/StatCard';
 import { StatusPill } from '../../components/ui/StatusPill';
-import { fetchDeadlines, syncCandidatureDeadlines, updateTaskStatus } from '../../lib/api';
+import { fetchDeadlines, syncCandidatureDeadlines } from '../../lib/api';
 import { useAuth } from '../providers/AuthProvider';
 
 const UPCOMING_WINDOW_DAYS = 30;
 
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.05 },
+  },
+};
+
+const item = {
+  hidden: { opacity: 0, x: -10 },
+  show: { opacity: 1, x: 0 },
+};
+
+/**
+ * Dashboard page showing overview of tasks, stats, and upcoming deadlines.
+ */
 export default function DashboardPage() {
   const { token, user, candidatures, refreshSession } = useAuth();
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
   const [banner, setBanner] = useState<{ tone: 'info' | 'success' | 'error'; message: string } | null>(null);
   const [isSyncing, setIsSyncing] = useState<string | null>(null);
-  const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
   const [isLoadingDeadlines, setIsLoadingDeadlines] = useState(true);
 
   useEffect(() => {
@@ -93,151 +120,223 @@ export default function DashboardPage() {
     }
   };
 
-  const handleUpdateStatus = async (taskId: string, status: TaskStatus) => {
-    if (!token) return;
-    setUpdatingTaskId(taskId);
-    try {
-      await updateTaskStatus(token, taskId, status);
-      await refreshSession();
-      setBanner({ tone: 'success', message: 'Statut mis à jour.' });
-    } catch (err) {
-      setBanner({ tone: 'error', message: err instanceof Error ? err.message : 'Mise à jour impossible.' });
-    } finally {
-      setUpdatingTaskId(null);
-    }
+  const getDaysUntil = (dateStr: string) => {
+    const now = new Date();
+    const due = new Date(dateStr);
+    const diff = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    return diff;
   };
 
   return (
     <Protected>
-      <main className="app-shell">
-        <section className="card hero stack">
-          <div className="stack">
-            <span className="badge">Bienvenue {user?.firstName}</span>
-            <h1 className="section-title">Tableau de bord</h1>
-            <p className="muted">Vue rapide sur tes candidatures, tâches et prochaines échéances.</p>
-          </div>
-        </section>
+      <div className="app-content">
+        <PageHeader
+          badge={`Bienvenue, ${user?.firstName} 👋`}
+          title="Tableau de bord"
+          description="Vue rapide sur tes candidatures, tâches et prochaines échéances."
+        />
 
-        {banner ? <Banner message={banner.message} tone={banner.tone} ariaLive="assertive" /> : null}
-
-        <section className="grid-3">
-          <StatCard label="Tâches totales" value={stats.total} trend={`Todo ${stats.todo} · Doing ${stats.doing}`} />
-          <StatCard label="Terminé" value={stats.done} trend="Bravo, continue !" />
-          <StatCard label="À venir" value={stats.upcoming} trend="Dans les 30 prochains jours" />
-        </section>
-
-        <Card title="Prochaines échéances" description="Dates limites dans les 30 prochains jours.">
-          {upcomingDeadlines.length === 0 ? (
-            <EmptyState
-              title="Aucune échéance imminente"
-              description="Synchronise tes candidatures pour importer les deadlines officielles."
-            />
-          ) : (
-            <div className="list">
-              {upcomingDeadlines.map((task) => (
-                <div key={task.id} className="list-row">
-                  <div className="stack-sm">
-                    <strong>{task.title}</strong>
-                    <p className="muted">
-                      {task.contestName} {task.contestYear}
-                      {task.schoolName ? ` · ${task.schoolName}` : ''}
-                    </p>
-                  </div>
-                  <div className="list-right">
-                    <span className="muted">{new Date(task.dueAt).toLocaleDateString('fr-FR')}</span>
-                    <StatusPill status={task.status} />
-                  </div>
-                </div>
-              ))}
-            </div>
+        <AnimatePresence>
+          {banner && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              style={{ marginBottom: 'var(--space-6)' }}
+            >
+              <Banner message={banner.message} tone={banner.tone} dismissible ariaLive="assertive" />
+            </motion.div>
           )}
-        </Card>
+        </AnimatePresence>
 
-        <Card
-          title="Mes candidatures"
-          description="Checklist par concours/école avec synchronisation des échéances officielles."
+        {/* Stats Grid */}
+        <motion.div
+          variants={container}
+          initial="hidden"
+          animate="show"
+          className="grid grid-4"
+          style={{ marginBottom: 'var(--space-6)' }}
         >
-          {candidatures.length === 0 ? (
-            <EmptyState
-              title="Aucune candidature pour l’instant"
-              description="Crée une candidature depuis la page Échéances pour démarrer."
+          <motion.div variants={item}>
+            <StatCard
+              label="Tâches totales"
+              value={stats.total}
+              trend={`${stats.todo} à faire · ${stats.doing} en cours`}
+              icon={<ListTodo size={20} />}
+              variant="primary"
             />
-          ) : (
-            <div className="stack">
-              {candidatures.map((cand) => (
-                <div key={cand.id} className="card card-nested stack">
-                  <div className="card-header">
-                    <div className="stack-sm">
-                      <strong>
-                        {cand.contest.name} {cand.contest.year}
-                        {cand.school ? ` · ${cand.school.name}` : ''}
-                      </strong>
-                      <p className="muted">{cand.tasks.length} tâches</p>
-                    </div>
-                    <Button
-                      variant="secondary"
-                      type="button"
-                      loading={isSyncing === cand.id}
-                      onClick={() => handleSync(cand.id)}
-                    >
-                      Synchroniser les échéances
-                    </Button>
-                  </div>
-                  {cand.tasks.length === 0 ? (
-                    <EmptyState title="Aucune tâche" description="Synchronise pour récupérer les deadlines." />
-                  ) : (
-                    <div className="list">
-                      {cand.tasks.map((task) => (
-                        <div key={task.id} className="list-row">
-                          <div className="stack-sm">
-                            <span>{task.title}</span>
-                            {task.suggestion ? <p className="subtle">{task.suggestion}</p> : null}
-                          </div>
-                          <div className="list-right">
-                            <select
-                              value={task.status}
-                              onChange={(e) => handleUpdateStatus(task.id, e.target.value as TaskStatus)}
-                              disabled={updatingTaskId === task.id}
-                              aria-label={`Statut ${task.title}`}
-                            >
-                              <option value="todo">todo</option>
-                              <option value="doing">doing</option>
-                              <option value="done">done</option>
-                            </select>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
+          </motion.div>
+          <motion.div variants={item}>
+            <StatCard
+              label="En cours"
+              value={stats.doing}
+              trend="Actuellement"
+              icon={<Clock size={20} />}
+              variant="warning"
+            />
+          </motion.div>
+          <motion.div variants={item}>
+            <StatCard
+              label="Terminées"
+              value={stats.done}
+              trend="Bravo ! Continue comme ça 🎉"
+              icon={<CheckCircle2 size={20} />}
+              variant="success"
+            />
+          </motion.div>
+          <motion.div variants={item}>
+            <StatCard
+              label="Échéances proches"
+              value={stats.upcoming}
+              trend="Dans les 30 prochains jours"
+              icon={<AlertCircle size={20} />}
+              variant="accent"
+            />
+          </motion.div>
+        </motion.div>
 
-        <Card title="Catalogue des deadlines" description="Vue synthétique des deadlines officielles (tous concours).">
+        <div className="grid grid-2" style={{ marginBottom: 'var(--space-6)' }}>
+          {/* Upcoming Deadlines */}
+          <Card
+            title="Prochaines échéances"
+            description="Dates limites dans les 30 prochains jours"
+            icon={<Calendar size={20} />}
+            actions={
+              <Link href="/deadlines">
+                <Button variant="ghost" size="sm" iconRight={<ChevronRight size={16} />}>
+                  Tout voir
+                </Button>
+              </Link>
+            }
+          >
+            {upcomingDeadlines.length === 0 ? (
+              <EmptyState
+                title="Aucune échéance imminente"
+                description="Synchronise tes candidatures pour importer les deadlines officielles."
+              />
+            ) : (
+              <motion.div variants={container} initial="hidden" animate="show" className="list">
+                {upcomingDeadlines.map((task) => {
+                  const daysUntil = getDaysUntil(task.dueAt);
+                  const isUrgent = daysUntil <= 7;
+                  
+                  return (
+                    <motion.div key={task.id} variants={item} className="list-item">
+                      <div className="list-item-content">
+                        <div className="list-item-title">{task.title}</div>
+                        <div className="list-item-subtitle">
+                          {task.contestName} {task.contestYear}
+                          {task.schoolName ? ` · ${task.schoolName}` : ''}
+                        </div>
+                      </div>
+                      <div className="list-item-actions">
+                        <span
+                          className={`badge ${isUrgent ? 'danger' : ''}`}
+                          style={isUrgent ? { background: 'var(--danger-soft)', color: 'var(--danger)' } : {}}
+                        >
+                          {daysUntil === 0 ? "Aujourd'hui" : daysUntil === 1 ? 'Demain' : `J-${daysUntil}`}
+                        </span>
+                        <StatusPill status={task.status} showLabel={false} />
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </motion.div>
+            )}
+          </Card>
+
+          {/* Quick Actions - Candidatures */}
+          <Card
+            title="Mes candidatures"
+            description="Synchronise les échéances de tes dossiers"
+            icon={<RefreshCw size={20} />}
+            actions={
+              <Link href="/candidatures">
+                <Button variant="ghost" size="sm" iconRight={<ChevronRight size={16} />}>
+                  Gérer
+                </Button>
+              </Link>
+            }
+          >
+            {candidatures.length === 0 ? (
+              <EmptyState
+                title="Aucune candidature"
+                description="Crée une candidature pour commencer à suivre tes dossiers."
+                action={
+                  <Link href="/candidatures">
+                    <Button size="sm">Créer une candidature</Button>
+                  </Link>
+                }
+              />
+            ) : (
+              <motion.div variants={container} initial="hidden" animate="show" className="list">
+                {candidatures.slice(0, 4).map((cand) => (
+                  <motion.div key={cand.id} variants={item} className="list-item">
+                    <div className="list-item-content">
+                      <div className="list-item-title">
+                        {cand.contest.name} {cand.contest.year}
+                      </div>
+                      <div className="list-item-subtitle">
+                        {cand.school?.name || 'Sans école'} · {cand.tasks.length} tâches
+                      </div>
+                    </div>
+                    <div className="list-item-actions">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        loading={isSyncing === cand.id}
+                        onClick={() => handleSync(cand.id)}
+                        iconLeft={<RefreshCw size={14} />}
+                      >
+                        Sync
+                      </Button>
+                    </div>
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
+          </Card>
+        </div>
+
+        {/* Catalog Preview */}
+        <Card
+          title="Catalogue des deadlines"
+          description="Échéances officielles (tous concours)"
+          icon={<Calendar size={20} />}
+          actions={
+            <Link href="/diplomas">
+              <Button variant="ghost" size="sm" iconRight={<ChevronRight size={16} />}>
+                Explorer
+              </Button>
+            </Link>
+          }
+        >
           {isLoadingDeadlines ? (
             <Loading label="Chargement des deadlines..." />
           ) : deadlines.length === 0 ? (
-            <EmptyState title="Aucune deadline" description="Ajoute des données via l’API ou Prisma seed." />
+            <EmptyState title="Aucune deadline" description="Ajoute des données via l'API ou le seed." />
           ) : (
-            <div className="list">
-              {deadlines.slice(0, 8).map((dl) => (
-                <div key={dl.id} className="list-row">
-                  <div className="stack-sm">
-                    <strong>{dl.title}</strong>
-                    <p className="muted">{dl.type}</p>
+            <motion.div variants={container} initial="hidden" animate="show" className="list">
+              {deadlines.slice(0, 5).map((dl) => (
+                <motion.div key={dl.id} variants={item} className="list-item">
+                  <div className="list-item-content">
+                    <div className="list-item-title">{dl.title}</div>
+                    <div className="list-item-subtitle">{dl.type}</div>
                   </div>
-                  <div className="list-right">
-                    <span className="muted">{new Date(dl.dueAt).toLocaleDateString('fr-FR')}</span>
-                    {dl.schoolId ? <span className="badge">École</span> : <span className="badge">Concours</span>}
+                  <div className="list-item-actions">
+                    <span className="text-muted text-sm">
+                      {new Date(dl.dueAt).toLocaleDateString('fr-FR')}
+                    </span>
+                    <span className={`badge ${dl.schoolId ? 'primary' : ''}`}>
+                      {dl.schoolId ? 'École' : 'Concours'}
+                    </span>
                   </div>
-                </div>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           )}
         </Card>
-      </main>
+      </div>
     </Protected>
   );
 }

@@ -3,3 +3,4 @@ ALTER TABLE "Deadline" ADD COLUMN "diplomaName" TEXT;
 ALTER TABLE "Candidature" ADD COLUMN "diplomaName" TEXT;
 
 
+

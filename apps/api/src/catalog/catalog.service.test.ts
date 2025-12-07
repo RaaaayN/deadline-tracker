@@ -22,7 +22,28 @@ describe('CatalogService', () => {
     prisma.contest.findMany.mockResolvedValue([]);
     await service.listContests();
     expect(prisma.contest.findMany).toHaveBeenCalledWith({
+      where: { year: undefined, testRequirements: undefined },
       orderBy: [{ year: 'desc' }, { name: 'asc' }],
+      include: {
+        deadlines: { where: { schoolId: null, programId: null }, orderBy: { dueAt: 'asc' } },
+        testRequirements: { orderBy: { weightPercent: 'desc' } },
+      },
+    });
+  });
+
+  it('filters contests by year and test type', async () => {
+    prisma.contest.findMany.mockResolvedValue([]);
+    await service.listContests({ year: 2026, test: 'gmat' });
+    expect(prisma.contest.findMany).toHaveBeenCalledWith({
+      where: {
+        year: 2026,
+        testRequirements: { some: { test: 'gmat' as any } },
+      },
+      orderBy: [{ year: 'desc' }, { name: 'asc' }],
+      include: {
+        deadlines: { where: { schoolId: null, programId: null }, orderBy: { dueAt: 'asc' } },
+        testRequirements: { orderBy: { weightPercent: 'desc' } },
+      },
     });
   });
 

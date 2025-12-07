@@ -16,13 +16,26 @@ interface ProgramFilters {
   format?: string;
 }
 
+interface ContestFilters {
+  year?: number;
+}
+
 @Injectable()
 export class CatalogService {
   constructor(private readonly prisma: PrismaService) {}
 
-  listContests() {
+  listContests(filters: ContestFilters = {}) {
     return this.prisma.contest.findMany({
+      where: {
+        year: filters.year,
+      },
       orderBy: [{ year: 'desc' }, { name: 'asc' }],
+      include: {
+        deadlines: {
+          where: { schoolId: null, programId: null },
+          orderBy: { dueAt: 'asc' },
+        },
+      },
     });
   }
 

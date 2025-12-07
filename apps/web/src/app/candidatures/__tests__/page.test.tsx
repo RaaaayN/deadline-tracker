@@ -1,8 +1,7 @@
+import { CandidatureType } from '@dossiertracker/shared';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-
-import { CandidatureType } from '@dossiertracker/shared';
 
 import CandidaturesPage from '../page';
 
@@ -77,9 +76,11 @@ describe('CandidaturesPage', () => {
 
   it('synchronise une candidature existante', async () => {
     apiMocks.fetchContests.mockResolvedValue([{ id: 'c1', name: 'GMAT 2026', year: 2026 }]);
+    apiMocks.syncCandidatureDeadlines.mockResolvedValue({ created: 0 });
     render(<CandidaturesPage />);
 
-    const syncBtn = await screen.findByText(/Synchroniser/i);
+    // In the new design, buttons are labeled "Sync" - find by text content
+    const syncBtn = await screen.findByText('Sync');
     fireEvent.click(syncBtn);
 
     await waitFor(() => {

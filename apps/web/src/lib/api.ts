@@ -12,7 +12,7 @@ import type {
 } from '@dossiertracker/shared';
 
 type FetchOptions = {
-  method?: 'GET' | 'POST' | 'PATCH';
+  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   body?: unknown;
   token?: string;
 };
@@ -58,8 +58,11 @@ export type ApiCandidature = {
   tasks: ApiTask[];
 };
 
-export function fetchContests() {
-  return apiFetch<Contest[]>('/catalog/contests');
+export function fetchContests(filters?: { year?: number }) {
+  const params = new URLSearchParams();
+  if (filters?.year) params.set('year', filters.year.toString());
+  const query = params.toString() ? `?${params.toString()}` : '';
+  return apiFetch<Contest[]>(`/catalog/contests${query}`);
 }
 
 export function fetchSchools(contestId: string) {
@@ -181,6 +184,10 @@ export function getGoogleAuthUrl(token: string) {
 
 export function exchangeGoogleCode(token: string, code: string) {
   return apiFetch<{ connected: true }>('/google/oauth/exchange', { method: 'POST', body: { code }, token });
+}
+
+export function purgeGoogleCalendar(token: string) {
+  return apiFetch<{ deleted: number }>('/google/calendar/purge-dossiertracker', { method: 'POST', token });
 }
 
 export function fetchGoogleStatus(token: string) {

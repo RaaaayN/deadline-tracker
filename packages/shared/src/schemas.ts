@@ -7,6 +7,7 @@ import {
   ProgramType,
   ReminderChannel,
   TaskStatus,
+  TestType,
   UserRole,
 } from './types';
 
@@ -165,6 +166,37 @@ export const programSchema = z.object({
   deadlines: z.array(deadlineSchema).optional(),
 });
 
+export const contestTestRequirementSchema = z.object({
+  id: z.string(),
+  test: z.nativeEnum(TestType),
+  minimumScore: z.number().optional(),
+  recommendedScore: z.number().optional(),
+  weightPercent: z.number().int().optional(),
+  validityMonths: z.number().int().optional(),
+  sections: z.array(z.string()),
+  notes: z.string().optional(),
+  registrationUrl: z.string().url().optional(),
+});
+
+export const contestSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  year: z.number().int(),
+  url: z.string().url().optional(),
+  description: z.string().optional(),
+  examFormat: z.string().optional(),
+  feesCents: z.number().int().optional(),
+  currency: z.string().default('EUR'),
+  registrationUrl: z.string().url().optional(),
+  languages: z.array(z.string()),
+  examLocations: z.array(z.string()),
+  durationMinutes: z.number().int().optional(),
+  scoreScale: z.string().optional(),
+  maxAttempts: z.number().int().optional(),
+  testRequirements: z.array(contestTestRequirementSchema).optional(),
+  deadlines: z.array(deadlineSchema).optional(),
+});
+
 export type UserInput = z.infer<typeof userSchema>;
 export type DeadlineInput = z.infer<typeof deadlineSchema>;
 export type TaskInput = z.infer<typeof taskSchema>;
@@ -173,4 +205,6 @@ export type CandidatureInput = z.infer<typeof candidatureSchema>;
 export type ProgramInput = z.infer<typeof programSchema>;
 export type LeaderboardInput = z.infer<typeof leaderboardSchema>;
 export type LeaderboardEntryInput = z.infer<typeof leaderboardEntrySchema>;
+export type ContestInput = z.infer<typeof contestSchema>;
+export type ContestTestRequirementInput = z.infer<typeof contestTestRequirementSchema>;
 

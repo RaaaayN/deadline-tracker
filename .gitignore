@@ -36,3 +36,12 @@ pnpm-lock.yaml
 package-lock.json
 yarn.lock
 
+# Data exports
+data/
+input.json
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.egg-info
+

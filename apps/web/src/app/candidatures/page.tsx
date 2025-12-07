@@ -1,6 +1,17 @@
 "use client";
 
-import { CandidatureType, type Contest, type TaskStatus } from '@dossiertracker/shared';
+import { CandidatureType, type Contest, type Deadline, type TaskStatus } from '@dossiertracker/shared';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  FolderKanban,
+  GraduationCap,
+  FileText,
+  RefreshCw,
+  Trash2,
+  Plus,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 
 import { Protected } from '../../components/Protected';
@@ -8,7 +19,7 @@ import { Banner } from '../../components/ui/Banner';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { Input } from '../../components/ui/Input';
+import { PageHeader } from '../../components/ui/PageHeader';
 import { Select } from '../../components/ui/Select';
 import { StatusPill } from '../../components/ui/StatusPill';
 import {
@@ -18,29 +29,41 @@ import {
   fetchDeadlines,
   fetchSchools,
   syncCandidatureDeadlines,
-  updateCandidature,
   updateTaskStatus,
 } from '../../lib/api';
 import { useAuth } from '../providers/AuthProvider';
 
-type EditState = {
-  diploma: Record<string, string>;
-  type: Record<string, CandidatureType>;
-};
-
-const TYPE_OPTIONS: { value: CandidatureType; label: string; helper: string }[] = [
+const TYPE_OPTIONS: { value: CandidatureType; label: string; icon: React.ElementType; helper: string }[] = [
   {
     value: CandidatureType.Concours,
     label: 'Concours',
-    helper: 'Liste des tests/examens (GMAT, TOEIC, TAGE MAGE).',
+    icon: FileText,
+    helper: 'Tests/examens (GMAT, TOEIC, TAGE MAGE)',
   },
   {
     value: CandidatureType.Diplome,
-    label: 'Dépôt de dossier (diplôme)',
-    helper: 'Choix d’un diplôme précis, filtrable par école.',
+    label: 'Dépôt de dossier',
+    icon: GraduationCap,
+    helper: 'Candidature à un diplôme spécifique',
   },
 ];
 
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.05 },
+  },
+};
+
+const item = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0 },
+};
+
+/**
+ * Candidatures management page with creation form and list.
+ */
 export default function CandidaturesPage() {
   const { token, candidatures, refreshSession } = useAuth();
   const [contests, setContests] = useState<Contest[]>([]);
@@ -58,7 +81,7 @@ export default function CandidaturesPage() {
   const [isSyncing, setIsSyncing] = useState<string | null>(null);
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
   const [banner, setBanner] = useState<{ tone: 'info' | 'success' | 'error'; message: string } | null>(null);
-  const [editState, setEditState] = useState<EditState>({ diploma: {}, type: {} });
+  const [expandedCandidatures, setExpandedCandidatures] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchContests()
@@ -86,7 +109,7 @@ export default function CandidaturesPage() {
             const uniqDiplomas = Array.from(
               new Set((deadlines ?? []).map((dl) => dl.diplomaName).filter((d): d is string => Boolean(d))),
             );
-            setOfficialDeadlines((prev) => ({ ...prev, [schoolId]: deadlines.map((d) => d.sessionLabel) }));
+            setOfficialDeadlines((prev) => ({ ...prev, [schoolId]: deadlines.map((d) => d.sessionLabel ?? '') }));
             setDiplomas(uniqDiplomas);
             const filteredByDiploma =
               creationDiploma && creationDiploma.trim().length > 0
@@ -128,7 +151,7 @@ export default function CandidaturesPage() {
       try {
         const deadlines = await fetchDeadlines(creationContestId);
         const uniqSessions = Array.from(new Set(deadlines.map((d) => d.sessionLabel).filter((s): s is string => Boolean(s))));
-        setOfficialDeadlines((prev) => ({ ...prev, [creationContestId]: deadlines.map((d) => d.sessionLabel) }));
+        setOfficialDeadlines((prev) => ({ ...prev, [creationContestId]: deadlines.map((d) => d.sessionLabel ?? '') }));
         if (!creationSession && uniqSessions[0]) {
           setCreationSession(uniqSessions[0]);
         } else if (creationSession && !uniqSessions.includes(creationSession)) {
@@ -139,7 +162,9 @@ export default function CandidaturesPage() {
       }
     };
     void loadContestSessions();
-  }, [creationContestId, creationType, creationSession]);
+    // intentionally ignore creationSession to avoid loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [creationContestId, creationType]);
 
   useEffect(() => {
     if (creationType === CandidatureType.Diplome && contests.length > 0 && !creationContestId) {
@@ -151,9 +176,7 @@ export default function CandidaturesPage() {
   }, [contests, creationContestId, creationType]);
 
   useEffect(() => {
-    if (creationType !== CandidatureType.Diplome) {
-      return;
-    }
+    if (creationType !== CandidatureType.Diplome) return;
     if (!creationSchoolId) {
       setAvailableSessions([]);
       return;
@@ -176,7 +199,9 @@ export default function CandidaturesPage() {
     } else if (creationSession && !uniqSessions.includes(creationSession)) {
       setCreationSession(uniqSessions[0] ?? '');
     }
-  }, [creationDiploma, creationSchoolId, creationSession, creationType, schoolDeadlines]);
+    // intentionally ignore creationSession to avoid selection loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [creationDiploma, creationSchoolId, creationType, schoolDeadlines]);
 
   const handleCreate = async () => {
     if (!token) {
@@ -211,7 +236,7 @@ export default function CandidaturesPage() {
         sessionLabel: creationSession.trim(),
       });
       await refreshSession();
-      setBanner({ tone: 'success', message: 'Candidature créée.' });
+      setBanner({ tone: 'success', message: 'Candidature créée avec succès !' });
       setCreationDiploma('');
       if (requiresSchool) {
         setCreationSchoolId('');
@@ -238,23 +263,6 @@ export default function CandidaturesPage() {
     }
   };
 
-  const handleUpdate = async (candidatureId: string) => {
-    if (!token) return;
-    const nextDiploma = editState.diploma[candidatureId];
-    const nextType = editState.type[candidatureId];
-
-    try {
-      await updateCandidature(token, candidatureId, {
-        diplomaName: nextDiploma?.trim(),
-        type: nextType,
-      });
-      await refreshSession();
-      setBanner({ tone: 'success', message: 'Candidature mise à jour.' });
-    } catch (err) {
-      setBanner({ tone: 'error', message: err instanceof Error ? err.message : 'Mise à jour impossible.' });
-    }
-  };
-
   const handleDelete = async (candidatureId: string) => {
     if (!token) return;
     try {
@@ -272,12 +280,23 @@ export default function CandidaturesPage() {
     try {
       await updateTaskStatus(token, taskId, status);
       await refreshSession();
-      setBanner({ tone: 'success', message: 'Statut mis à jour.' });
     } catch (err) {
       setBanner({ tone: 'error', message: err instanceof Error ? err.message : 'Mise à jour impossible.' });
     } finally {
       setUpdatingTaskId(null);
     }
+  };
+
+  const toggleExpanded = (id: string) => {
+    setExpandedCandidatures((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   };
 
   const candidaturesByType = useMemo(() => {
@@ -306,48 +325,92 @@ export default function CandidaturesPage() {
 
   return (
     <Protected>
-      <main className="app-shell">
-        <section className="card hero stack">
-          <div className="stack">
-            <span className="badge">Candidatures</span>
-            <h1 className="section-title">Distingue concours et dépôts de dossier</h1>
-            <p className="muted">Concours (tests GMAT/TOEIC/TAGE MAGE) vs dossiers diplôme (MSc, MiM, MBA...).</p>
-          </div>
-        </section>
+      <div className="app-content">
+        <PageHeader
+          badge="Candidatures"
+          title="Gère tes dossiers"
+          description="Distingue concours (GMAT, TOEIC, TAGE MAGE) et dépôts de dossier (MSc, MiM, MBA)."
+        />
 
-        {banner ? <Banner message={banner.message} tone={banner.tone} ariaLive="assertive" /> : null}
+        <AnimatePresence>
+          {banner && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              style={{ marginBottom: 'var(--space-6)' }}
+            >
+              <Banner message={banner.message} tone={banner.tone} dismissible ariaLive="assertive" />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        <Card title="Créer une candidature" description="Choisis le type, le concours et le diplôme ciblé.">
-          <div className="stack-sm">
-            <div className="grid-2">
-              {TYPE_OPTIONS.map((opt) => (
-                <label key={opt.value} className={`card card-nested ${creationType === opt.value ? 'active' : ''}`}>
-                  <div className="stack-sm">
-                    <div className="flex space-between">
-                      <span className="strong">{opt.label}</span>
-                      <input
-                        type="radio"
-                        name="creation-type"
-                        value={opt.value}
-                        checked={creationType === opt.value}
-                        onChange={() => {
-                          setCreationType(opt.value);
-                          setCreationContestId('');
-                          setCreationSchoolId('');
-                          setCreationDiploma('');
-                          setCreationSession('');
-                          setDiplomas([]);
-                          setAvailableSessions([]);
-                        }}
-                      />
-                    </div>
-                    <p className="muted">{opt.helper}</p>
+        {/* Creation Form */}
+        <Card
+          title="Nouvelle candidature"
+          description="Choisis le type, le concours et le diplôme ciblé."
+          icon={<Plus size={20} />}
+          className="stack-lg"
+        >
+          {/* Type Selection */}
+          <div className="grid grid-2">
+            {TYPE_OPTIONS.map((opt) => {
+              const Icon = opt.icon;
+              const isSelected = creationType === opt.value;
+              return (
+                <motion.button
+                  key={opt.value}
+                  type="button"
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                  onClick={() => {
+                    setCreationType(opt.value);
+                    setCreationContestId('');
+                    setCreationSchoolId('');
+                    setCreationDiploma('');
+                    setCreationSession('');
+                    setDiplomas([]);
+                    setAvailableSessions([]);
+                  }}
+                  style={{
+                    padding: 'var(--space-4)',
+                    background: isSelected ? 'var(--primary-soft)' : 'var(--surface-muted)',
+                    border: `2px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
+                    borderRadius: 'var(--radius-lg)',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 'var(--space-3)',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 'var(--radius-md)',
+                      background: isSelected ? 'var(--primary)' : 'var(--surface)',
+                      color: isSelected ? 'white' : 'var(--text-secondary)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Icon size={20} />
                   </div>
-                </label>
-              ))}
-            </div>
+                  <div>
+                    <div className="font-semibold" style={{ color: isSelected ? 'var(--primary)' : 'var(--text)' }}>
+                      {opt.label}
+                    </div>
+                    <div className="text-sm text-muted">{opt.helper}</div>
+                  </div>
+                </motion.button>
+              );
+            })}
           </div>
-          <div className="grid-3">
+
+          {/* Form Fields */}
+          <div className="grid grid-3">
             {creationType === CandidatureType.Concours ? (
               <>
                 <Select
@@ -378,14 +441,12 @@ export default function CandidaturesPage() {
                   label="École"
                   name="creation-school"
                   value={creationSchoolId}
-                  onChange={(e) => {
-                    setCreationSchoolId(e.target.value);
-                  }}
+                  onChange={(e) => setCreationSchoolId(e.target.value)}
                   options={[{ value: '', label: 'Choisir une école' }, ...schools.map((s) => ({ value: s.id, label: s.name }))]}
                   disabled={!creationContestId}
                 />
                 <Select
-                  label="Diplômes disponibles"
+                  label="Diplôme"
                   name="available-diploma"
                   value={creationDiploma}
                   onChange={(e) => setCreationDiploma(e.target.value)}
@@ -406,117 +467,189 @@ export default function CandidaturesPage() {
               </>
             )}
           </div>
-          <div className="grid-full">
-            <Button
-              type="button"
-              onClick={handleCreate}
-              loading={isCreating}
-              disabled={
-                creationType === CandidatureType.Concours
-                  ? !creationContestId || !creationSession
-                  : !creationContestId || !creationSchoolId || !creationDiploma || !creationSession
-              }
-            >
-              Créer la candidature
-            </Button>
-          </div>
+
+          <Button
+            type="button"
+            onClick={handleCreate}
+            loading={isCreating}
+            disabled={
+              creationType === CandidatureType.Concours
+                ? !creationContestId || !creationSession
+                : !creationContestId || !creationSchoolId || !creationDiploma || !creationSession
+            }
+            iconLeft={<Plus size={18} />}
+          >
+            Créer la candidature
+          </Button>
         </Card>
 
-        <Card title="Mes candidatures" description="Gère le type, le diplôme et synchronise les échéances officielles.">
+        {/* Candidatures List */}
+        <Card
+          title="Mes candidatures"
+          description="Gère le type, le diplôme et synchronise les échéances officielles."
+          icon={<FolderKanban size={20} />}
+        >
           {candidatures.length === 0 ? (
-            <EmptyState title="Aucune candidature" description="Crée une candidature pour commencer." />
+            <EmptyState title="Aucune candidature" description="Crée une candidature pour commencer à suivre tes dossiers." />
           ) : (
-            <div className="stack">
-              {[CandidatureType.Concours, CandidatureType.Diplome].map((type) => (
-                <div key={type} className="stack">
-                  <h3 className="section-title">{type === CandidatureType.Concours ? 'Concours' : 'Dépôt de dossier diplôme'}</h3>
-                  {candidaturesByType[type].length === 0 ? (
-                    <p className="muted">Aucune candidature de ce type.</p>
-                  ) : (
-                    <div className="stack">
-                      {candidaturesByType[type].map((cand) => (
-                        <div key={cand.id} className="card card-nested stack">
-                          <div className="card-header">
-                            <div className="stack-sm">
-                              <div className="flex gap-2 items-center">
-                                <span className="badge">{cand.type === CandidatureType.Concours ? 'Concours' : 'Diplôme'}</span>
-                                <strong>
-                                  {cand.contest.name} {cand.contest.year}
-                                </strong>
-                              </div>
-                              {cand.type === CandidatureType.Diplome ? (
-                                <Input
-                                  label="Diplôme"
-                                  name={`diploma-${cand.id}`}
-                                  value={cand.diplomaName ?? ''}
-                                  readOnly
-                                />
-                              ) : null}
-                              <Select
-                                label="Type"
-                                name={`type-${cand.id}`}
-                                value={cand.type}
-                                disabled
-                                options={[
-                                  { value: CandidatureType.Concours, label: 'Concours (sans école)' },
-                                  { value: CandidatureType.Diplome, label: 'Dépôt de dossier (diplôme)' },
-                                ]}
-                              />
-                            </div>
-                            <div className="card-actions">
-                              <Button variant="secondary" type="button" loading={isSyncing === cand.id} onClick={() => handleSync(cand.id)}>
-                                Synchroniser
-                              </Button>
-                              <Button variant="ghost" type="button" onClick={() => handleUpdate(cand.id)}>
-                                Enregistrer
-                              </Button>
-                              <Button variant="danger" type="button" onClick={() => handleDelete(cand.id)}>
-                                Supprimer
-                              </Button>
-                            </div>
-                          </div>
-                          {cand.tasks.length === 0 ? (
-                            <EmptyState title="Aucune tâche" description="Synchronise pour importer les deadlines officielles." />
-                          ) : (
-                            <div className="list">
-                              {cand.tasks.map((task) => (
-                                <div key={task.id} className="list-row">
-                                  <div className="stack-sm">
-                                    <span>{task.title}</span>
-                                    {task.deadline?.dueAt ? (
-                                      <p className="subtle">Échéance : {new Date(task.deadline.dueAt).toLocaleDateString('fr-FR')}</p>
-                                    ) : null}
-                                    {task.suggestion ? <p className="subtle">{task.suggestion}</p> : null}
-                                  </div>
-                                  <div className="list-right">
-                                    <select
-                                      value={task.status}
-                                      onChange={(e) => handleStatusChange(task.id, e.target.value as TaskStatus)}
-                                      disabled={updatingTaskId === task.id}
-                                      aria-label={`Statut ${task.title}`}
-                                    >
-                                      <option value="todo">todo</option>
-                                      <option value="doing">doing</option>
-                                      <option value="done">done</option>
-                                    </select>
-                                    <StatusPill status={task.status} />
-                                  </div>
+            <motion.div variants={container} initial="hidden" animate="show" className="stack-lg">
+              {[CandidatureType.Concours, CandidatureType.Diplome].map((type) => {
+                const typeCandidatures = candidaturesByType[type];
+                if (typeCandidatures.length === 0) return null;
+
+                return (
+                  <div key={type} className="stack-md">
+                    <h3 className="flex items-center gap-2" style={{ fontSize: 'var(--text-lg)' }}>
+                      {type === CandidatureType.Concours ? <FileText size={20} /> : <GraduationCap size={20} />}
+                      {type === CandidatureType.Concours ? 'Concours' : 'Dépôt de dossier'}
+                      <span className="badge">{typeCandidatures.length}</span>
+                    </h3>
+
+                    <div className="list">
+                      {typeCandidatures.map((cand) => {
+                        const isExpanded = expandedCandidatures.has(cand.id);
+                        const completedTasks = cand.tasks.filter((t) => t.status === 'done').length;
+                        const progress = cand.tasks.length > 0 ? Math.round((completedTasks / cand.tasks.length) * 100) : 0;
+
+                        return (
+                          <motion.div key={cand.id} variants={item} className="card card-nested">
+                            <div
+                              role="button"
+                              tabIndex={0}
+                              className="flex items-center justify-between"
+                              style={{ cursor: 'pointer' }}
+                              onClick={() => toggleExpanded(cand.id)}
+                              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggleExpanded(cand.id); }}
+                            >
+                              <div className="stack-xs" style={{ flex: 1 }}>
+                                <div className="flex items-center gap-2">
+                                  <span className="badge primary">
+                                    {cand.type === CandidatureType.Concours ? 'Concours' : 'Diplôme'}
+                                  </span>
+                                  <strong>
+                                    {cand.contest.name} {cand.contest.year}
+                                  </strong>
                                 </div>
-                              ))}
+                                <div className="text-sm text-muted">
+                                  {cand.school?.name || 'Sans école'} · {cand.tasks.length} tâches · {progress}% terminé
+                                </div>
+                                {/* Progress bar */}
+                                <div
+                                  style={{
+                                    height: 4,
+                                    background: 'var(--border)',
+                                    borderRadius: 'var(--radius-full)',
+                                    overflow: 'hidden',
+                                    maxWidth: 200,
+                                  }}
+                                >
+                                  <motion.div
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${progress}%` }}
+                                    transition={{ duration: 0.5 }}
+                                    style={{
+                                      height: '100%',
+                                      background: 'var(--success)',
+                                      borderRadius: 'var(--radius-full)',
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  loading={isSyncing === cand.id}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSync(cand.id);
+                                  }}
+                                  iconLeft={<RefreshCw size={14} />}
+                                >
+                                  Sync
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleExpanded(cand.id);
+                                  }}
+                                >
+                                  {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                                </Button>
+                              </div>
                             </div>
-                          )}
-                        </div>
-                      ))}
+
+                            <AnimatePresence>
+                              {isExpanded && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: 'auto', opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  transition={{ duration: 0.2 }}
+                                  style={{ overflow: 'hidden', marginTop: 'var(--space-4)' }}
+                                >
+                                  {cand.tasks.length === 0 ? (
+                                    <EmptyState
+                                      title="Aucune tâche"
+                                      description="Synchronise pour récupérer les deadlines officielles."
+                                    />
+                                  ) : (
+                                    <div className="list">
+                                      {cand.tasks.map((task) => (
+                                        <div key={task.id} className="list-item">
+                                          <div className="list-item-content">
+                                            <div className="list-item-title">{task.title}</div>
+                                            {task.deadline?.dueAt && (
+                                              <div className="list-item-subtitle">
+                                                Échéance : {new Date(task.deadline.dueAt).toLocaleDateString('fr-FR')}
+                                              </div>
+                                            )}
+                                          </div>
+                                          <div className="list-item-actions">
+                                            <select
+                                              value={task.status}
+                                              onChange={(e) => handleStatusChange(task.id, e.target.value as TaskStatus)}
+                                              disabled={updatingTaskId === task.id}
+                                              aria-label={`Statut ${task.title}`}
+                                              style={{ minWidth: 100 }}
+                                            >
+                                              <option value="todo">À faire</option>
+                                              <option value="doing">En cours</option>
+                                              <option value="done">Terminé</option>
+                                            </select>
+                                            <StatusPill status={task.status} showLabel={false} />
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+
+                                  <div className="flex gap-2" style={{ marginTop: 'var(--space-4)' }}>
+                                    <Button
+                                      variant="danger"
+                                      size="sm"
+                                      onClick={() => handleDelete(cand.id)}
+                                      iconLeft={<Trash2 size={14} />}
+                                    >
+                                      Supprimer
+                                    </Button>
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </motion.div>
+                        );
+                      })}
                     </div>
-                  )}
-                </div>
-              ))}
-            </div>
+                  </div>
+                );
+              })}
+            </motion.div>
           )}
         </Card>
-      </main>
+      </div>
     </Protected>
   );
 }
-
-

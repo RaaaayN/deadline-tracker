@@ -39,6 +39,11 @@ export class GoogleController {
     );
   }
 
+  @Post('calendar/purge-dossiertracker')
+  purgeCalendar(@Req() req: AuthedRequest) {
+    return this.google.purgeDossierTrackerEvents(req.user.userId);
+  }
+
   @Get('gmail/messages')
   inbox(@Req() req: AuthedRequest) {
     return this.google.listInbox(req.user.userId);

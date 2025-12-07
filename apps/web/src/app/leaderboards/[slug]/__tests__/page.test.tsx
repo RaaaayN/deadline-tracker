@@ -1,5 +1,5 @@
-import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import LeaderboardDetailPage from '../page';
@@ -41,7 +41,8 @@ describe('LeaderboardDetailPage', () => {
     await waitFor(() => expect(screen.getByText(/FT European Business Schools/i)).toBeInTheDocument());
     expect(screen.getByText(/2025/)).toBeInTheDocument();
     expect(screen.getByText(/HEC Paris/)).toBeInTheDocument();
-    expect(screen.getByText('#1')).toBeInTheDocument();
+    // Rank is now rendered as text inside a div
+    expect(screen.getByText('1')).toBeInTheDocument();
   });
 });
 

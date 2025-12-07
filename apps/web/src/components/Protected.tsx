@@ -23,7 +23,7 @@ export function Protected({ children }: ProtectedProps) {
     }
     if (!token) {
       const redirect = pathname ? `?redirect=${encodeURIComponent(pathname)}` : '';
-      router.replace(`/auth/login${redirect}`);
+      router.replace(`/auth/login${redirect}` as '/auth/login');
       return;
     }
     setChecked(true);
@@ -31,9 +31,9 @@ export function Protected({ children }: ProtectedProps) {
 
   if (isAuthLoading || !checked) {
     return (
-      <main className="app-shell">
+      <div className="app-content">
         <Loading label="Vérification de la session..." />
-      </main>
+      </div>
     );
   }
 

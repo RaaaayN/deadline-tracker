@@ -1,5 +1,7 @@
 "use client";
 
+import { motion, AnimatePresence } from 'framer-motion';
+import { User, Bell, Link as LinkIcon, CheckCircle, Trash2 } from 'lucide-react';
 import React, { useEffect, useState, type FormEvent } from 'react';
 
 import { Protected } from '../../components/Protected';
@@ -8,9 +10,13 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Loading } from '../../components/ui/Loading';
-import { fetchGoogleStatus, updateProfile } from '../../lib/api';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { fetchGoogleStatus, purgeGoogleCalendar, updateProfile } from '../../lib/api';
 import { useAuth } from '../providers/AuthProvider';
 
+/**
+ * Settings page for profile management and integrations.
+ */
 export default function SettingsPage() {
   const { token, user, refreshSession, fetchGoogleUrl } = useAuth();
   const [firstName, setFirstName] = useState(user?.firstName ?? '');
@@ -21,6 +27,7 @@ export default function SettingsPage() {
     null,
   );
   const [isLoadingGoogle, setIsLoadingGoogle] = useState(false);
+  const [isPurgingCalendar, setIsPurgingCalendar] = useState(false);
 
   useEffect(() => {
     setFirstName(user?.firstName ?? '');
@@ -50,7 +57,7 @@ export default function SettingsPage() {
     try {
       await updateProfile(token, { firstName, lastName });
       await refreshSession();
-      setBanner({ tone: 'success', message: 'Profil mis à jour.' });
+      setBanner({ tone: 'success', message: 'Profil mis à jour avec succès !' });
     } catch (err) {
       setBanner({ tone: 'error', message: err instanceof Error ? err.message : 'Sauvegarde impossible.' });
     } finally {
@@ -67,59 +74,192 @@ export default function SettingsPage() {
     }
   };
 
+  const handlePurgeCalendar = async () => {
+    if (!token) return;
+    setIsPurgingCalendar(true);
+    try {
+      const res = await purgeGoogleCalendar(token);
+      setBanner({
+        tone: 'success',
+        message: `${res.deleted} évènements DossierTracker supprimés de Google Calendar.`,
+      });
+    } catch (err) {
+      setBanner({ tone: 'error', message: err instanceof Error ? err.message : 'Purge impossible.' });
+    } finally {
+      setIsPurgingCalendar(false);
+    }
+  };
+
   return (
     <Protected>
-      <main className="app-shell">
-        <section className="card hero stack">
-          <div className="stack">
-            <span className="badge">Paramètres</span>
-            <h1 className="section-title">Profil et intégrations</h1>
-            <p className="muted">Met à jour ton identité et connecte Google pour les rappels.</p>
-          </div>
-        </section>
+      <div className="app-content">
+        <PageHeader
+          badge="Paramètres"
+          title="Profil et intégrations"
+          description="Gère ton identité et connecte tes services externes."
+        />
 
-        {banner ? <Banner message={banner.message} tone={banner.tone} ariaLive="assertive" /> : null}
+        <AnimatePresence>
+          {banner && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              style={{ marginBottom: 'var(--space-6)' }}
+            >
+              <Banner message={banner.message} tone={banner.tone} dismissible ariaLive="assertive" />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        <Card title="Profil" description="Ces informations s’appliquent à tes dossiers et rappels.">
-          <form className="grid-2" onSubmit={handleProfile}>
-            <Input label="Prénom" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
-            <Input label="Nom" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
-            <div className="grid-full">
+        <div className="stack-lg">
+          {/* Profile Section */}
+          <Card
+            title="Profil"
+            description="Ces informations s'appliquent à tes dossiers et rappels."
+            icon={<User size={20} />}
+          >
+            <form onSubmit={handleProfile}>
+              <div className="grid grid-2" style={{ marginBottom: 'var(--space-4)' }}>
+                <Input
+                  label="Prénom"
+                  name="firstName"
+                  icon={<User size={18} />}
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  required
+                />
+                <Input
+                  label="Nom"
+                  name="lastName"
+                  icon={<User size={18} />}
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  required
+                />
+              </div>
+              <Input
+                label="Email"
+                name="email"
+                type="email"
+                value={user?.email ?? ''}
+                disabled
+                hint="L'email ne peut pas être modifié"
+                style={{ marginBottom: 'var(--space-4)' }}
+              />
               <Button type="submit" loading={isSavingProfile} disabled={!firstName || !lastName}>
                 Sauvegarder
               </Button>
-            </div>
-          </form>
-        </Card>
+            </form>
+          </Card>
 
-        <Card title="Google" description="Connecte Gmail/Calendar pour les rappels et brouillons automatiques.">
-          {isLoadingGoogle ? (
-            <Loading label="Vérification de la connexion Google..." />
-          ) : (
-            <div className="stack">
-              <div className="stack-sm">
-                <p className="muted">
-                  Statut : {googleStatus?.connected ? 'Connecté' : 'Non connecté'}
-                  {googleStatus?.expiryDate ? ` (expire le ${new Date(googleStatus.expiryDate).toLocaleDateString('fr-FR')})` : ''}
-                </p>
-                {googleStatus?.scopes ? <p className="subtle">Scopes : {googleStatus.scopes.join(', ')}</p> : null}
-              </div>
-              <div className="cta-group">
-                <Button type="button" onClick={handleConnectGoogle} variant="secondary">
+          {/* Google Integration */}
+          <Card
+            title="Google"
+            description="Connecte Gmail/Calendar pour les rappels et brouillons automatiques."
+            icon={<LinkIcon size={20} />}
+          >
+            {isLoadingGoogle ? (
+              <Loading label="Vérification de la connexion Google..." />
+            ) : (
+              <div className="stack-md">
+                <div
+                  className="list-item"
+                  style={{
+                    background: googleStatus?.connected ? 'var(--success-soft)' : 'var(--surface-muted)',
+                    borderColor: googleStatus?.connected ? 'var(--success-light)' : 'var(--border)',
+                  }}
+                >
+                  <div className="list-item-content">
+                    <div className="list-item-title flex items-center gap-2">
+                      {googleStatus?.connected && <CheckCircle size={16} className="text-success" />}
+                      {googleStatus?.connected ? 'Compte Google connecté' : 'Non connecté'}
+                    </div>
+                    <div className="list-item-subtitle">
+                      {googleStatus?.expiryDate
+                        ? `Expire le ${new Date(googleStatus.expiryDate).toLocaleDateString('fr-FR')}`
+                        : 'Connecte ton compte Google pour synchroniser les rappels'}
+                    </div>
+                  </div>
+                </div>
+
+                {googleStatus?.scopes && (
+                  <div className="stack-sm">
+                    <span className="text-sm font-semibold">Permissions accordées :</span>
+                    <div className="flex flex-wrap gap-2">
+                      {googleStatus.scopes.map((scope) => (
+                        <span key={scope} className="badge">
+                          {scope.split('/').pop()}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <Button
+                  type="button"
+                  onClick={handleConnectGoogle}
+                  variant={googleStatus?.connected ? 'secondary' : 'primary'}
+                >
                   {googleStatus?.connected ? 'Reconnecter Google' : 'Connecter Google'}
                 </Button>
+
+                {googleStatus?.connected && (
+                  <div className="stack-sm">
+                    <p className="text-sm text-muted">
+                      Supprimer tous les événements DossierTracker déjà créés dans ton Google Calendar.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      tone="danger"
+                      iconLeft={<Trash2 size={16} />}
+                      onClick={handlePurgeCalendar}
+                      loading={isPurgingCalendar}
+                    >
+                      Purger les événements DossierTracker
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </Card>
+
+          {/* Notifications Section */}
+          <Card
+            title="Notifications"
+            description="Préférences de rappels et alertes."
+            icon={<Bell size={20} />}
+          >
+            <div className="list">
+              <div className="list-item">
+                <div className="list-item-content">
+                  <div className="list-item-title">Rappels J-30</div>
+                  <div className="list-item-subtitle">Reçois un email 30 jours avant chaque deadline</div>
+                </div>
+                <div className="badge success">Actif</div>
+              </div>
+              <div className="list-item">
+                <div className="list-item-content">
+                  <div className="list-item-title">Rappels J-7</div>
+                  <div className="list-item-subtitle">Reçois un email 7 jours avant chaque deadline</div>
+                </div>
+                <div className="badge success">Actif</div>
+              </div>
+              <div className="list-item">
+                <div className="list-item-content">
+                  <div className="list-item-title">Rappels J-1</div>
+                  <div className="list-item-subtitle">Reçois un email la veille de chaque deadline</div>
+                </div>
+                <div className="badge success">Actif</div>
               </div>
             </div>
-          )}
-        </Card>
-
-        <Card title="Notifications" description="Préférences locales (placeholder en attendant l’API dédiée).">
-          <p className="muted">
-            Les rappels J-30/J-7/J-1 sont générés automatiquement côté API. Les préférences fines (SMS/push) seront
-            ajoutées ici lorsque les providers seront configurés.
-          </p>
-        </Card>
-      </main>
+            <p className="text-muted text-sm" style={{ marginTop: 'var(--space-4)' }}>
+              Les préférences de notifications avancées (SMS/push) seront disponibles prochainement.
+            </p>
+          </Card>
+        </div>
+      </div>
     </Protected>
   );
 }

@@ -1,5 +1,5 @@
-import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import LeaderboardsPage from '../page';
@@ -40,7 +40,7 @@ describe('LeaderboardsPage', () => {
     render(<LeaderboardsPage />);
     await waitFor(() => expect(screen.getByText(/FT European Business Schools/i)).toBeInTheDocument());
     expect(screen.getByText(/2025/)).toBeInTheDocument();
-    expect(screen.getByText(/Voir le détail/i)).toBeInTheDocument();
+    expect(screen.getByText(/Voir le classement/i)).toBeInTheDocument();
   });
 });
 

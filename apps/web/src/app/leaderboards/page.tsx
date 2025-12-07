@@ -1,16 +1,35 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-
 import { Leaderboard } from '@dossiertracker/shared';
+import { motion } from 'framer-motion';
+import { Trophy, ChevronRight, Calendar, MapPin, Tag } from 'lucide-react';
+import Link from 'next/link';
+import React, { useEffect, useState } from 'react';
 
 import { Banner } from '../../components/ui/Banner';
+import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Loading } from '../../components/ui/Loading';
+import { PageHeader } from '../../components/ui/PageHeader';
 import { fetchLeaderboards } from '../../lib/api';
 
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.08 },
+  },
+};
+
+const item = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 },
+};
+
+/**
+ * Leaderboards listing page.
+ */
 export default function LeaderboardsPage() {
   const [leaderboards, setLeaderboards] = useState<Leaderboard[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -32,53 +51,103 @@ export default function LeaderboardsPage() {
     void load();
   }, []);
 
-  return (
-    <main className="app-shell">
-      <section className="card hero stack">
-        <div className="stack">
-          <span className="badge">Classements</span>
-          <div className="stack-sm">
-            <h1 className="section-title">Tous les classements écoles/programmes</h1>
-            <p className="muted">
-              Sources (FT, QS...), année, catégorie/région, liens vers le détail et le top écoles/programmes.
-            </p>
-          </div>
-        </div>
-      </section>
+  // Group by source
+  const groupedBySource = leaderboards.reduce<Record<string, Leaderboard[]>>((acc, lb) => {
+    const source = lb.source || 'Autre';
+    if (!acc[source]) acc[source] = [];
+    acc[source].push(lb);
+    return acc;
+  }, {});
 
-      {error ? <Banner tone="error" message={error} ariaLive="assertive" /> : null}
+  return (
+    <div className="app-content">
+      <PageHeader
+        badge="Classements"
+        title="Rankings des écoles et programmes"
+        description="Financial Times, QS, et autres sources pour comparer les meilleures formations."
+      />
+
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{ marginBottom: 'var(--space-6)' }}
+        >
+          <Banner tone="error" message={error} ariaLive="assertive" />
+        </motion.div>
+      )}
 
       {loading ? (
-        <div className="card">
-          <Loading />
-        </div>
+        <Card>
+          <Loading label="Chargement des classements..." />
+        </Card>
       ) : leaderboards.length === 0 ? (
-        <EmptyState title="Aucun classement" description="Les classements seront ajoutés prochainement." />
+        <Card>
+          <EmptyState
+            title="Aucun classement disponible"
+            description="Les classements seront ajoutés prochainement."
+            icon={<Trophy size={64} />}
+          />
+        </Card>
       ) : (
-        <div className="stack">
-          {leaderboards.map((lb) => (
-            <div key={lb.id} className="card stack">
-              <div className="flex space-between items-start">
-                <div className="stack-sm">
-                  <span className="badge">{lb.source}</span>
-                  <h3 className="section-title">{lb.name}</h3>
-                  <p className="muted">
-                    {lb.category ? `${lb.category} · ` : ''}
-                    {lb.region ? `${lb.region} · ` : ''}
-                    {lb.year}
-                  </p>
-                </div>
-                <Link href={`/leaderboards/${lb.slug}`} className="btn btn-primary">
-                  Voir le détail
-                </Link>
+        <motion.div variants={container} initial="hidden" animate="show" className="stack-lg">
+          {Object.entries(groupedBySource).map(([source, lbs]) => (
+            <div key={source} className="stack-md">
+              <div className="flex items-center gap-2">
+                <Trophy size={20} className="text-primary" />
+                <h2 style={{ fontSize: 'var(--text-xl)' }}>{source}</h2>
+                <span className="badge">{lbs.length}</span>
               </div>
-              <p className="muted">{lb.description ?? 'Découvrez le top des écoles/programmes.'}</p>
+
+              <div className="grid grid-3">
+                {lbs.map((lb) => (
+                  <motion.div key={lb.id} variants={item}>
+                    <Card variant="interactive" className="stack-md" style={{ height: '100%' }}>
+                      <div className="stack-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="badge primary">{lb.source}</span>
+                          <span className="badge">
+                            <Calendar size={12} />
+                            {lb.year}
+                          </span>
+                        </div>
+                        <h3 style={{ fontSize: 'var(--text-lg)', marginTop: 'var(--space-2)' }}>
+                          {lb.name}
+                        </h3>
+                      </div>
+
+                      <div className="stack-xs">
+                        {lb.category && (
+                          <div className="flex items-center gap-2 text-sm text-muted">
+                            <Tag size={14} />
+                            <span>{lb.category}</span>
+                          </div>
+                        )}
+                        {lb.region && (
+                          <div className="flex items-center gap-2 text-sm text-muted">
+                            <MapPin size={14} />
+                            <span>{lb.region}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <p className="text-secondary text-sm" style={{ flex: 1 }}>
+                        {lb.description || 'Découvre le top des écoles et programmes.'}
+                      </p>
+
+                      <Link href={`/leaderboards/${lb.slug}`}>
+                        <Button size="sm" iconRight={<ChevronRight size={16} />}>
+                          Voir le classement
+                        </Button>
+                      </Link>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
             </div>
           ))}
-        </div>
+        </motion.div>
       )}
-    </main>
+    </div>
   );
 }
-
-
